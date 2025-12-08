@@ -1,31 +1,27 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-
 export default defineConfig({
   plugins: [react()],
-  
+
   resolve: {
     alias: {
-      buffer: 'buffer',
+      buffer: 'buffer/',
       process: 'process/browser',
-      util: 'util/',
       stream: 'stream-browserify',
+      util: 'util/',
       crypto: 'crypto-browserify',
+      assert: 'assert/',
+      http: 'stream-http',
+      https: 'https-browserify',
+      os: 'os-browserify',
+      url: 'url/',
+      path: 'path-browserify',
     }
   },
 
   define: {
-    'process.env': process.env,
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
     global: 'globalThis',
   },
-
-  build: {
-    target: 'esnext',
-    rollupOptions: {
-      output: {
-        manualChunks: undefined
-      }
-    }
-  }
 })

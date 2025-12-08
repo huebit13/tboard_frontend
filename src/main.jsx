@@ -1,13 +1,9 @@
-// ←←← САМОЕ НАЧАЛО ФАЙЛА, ДО ВСЕГО!
-import 'core-js/stable'
-import 'regenerator-runtime/runtime'
-
 import { Buffer } from 'buffer'
 import process from 'process'
 
-window.Buffer = window.Buffer || Buffer
-window.process = window.process || process
-window.global = window.global || window
+window.Buffer = Buffer
+window.process = process
+window.global = globalThis
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
