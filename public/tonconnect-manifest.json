@@ -1,7 +1,7 @@
 {
-  "url": "http://localhost:5173",
+  "url": "https://tboard.space",
   "name": "TBoard",
-  "iconUrl": "http://localhost:5173/vite.svg",
-  "termsOfUseUrl": "http://localhost:5173",
-  "privacyPolicyUrl": "http://localhost:5173"
+  "iconUrl": "https://tboard.space/vite.svg",
+  "termsOfUseUrl": "https://tboard.space/terms",
+  "privacyPolicyUrl": "https://tboard.space/privacy"
 }
