@@ -1,6 +1,14 @@
-// frontend/tboard/src/main.jsx
-import { Buffer } from 'buffer';
-window.Buffer = Buffer;
+// ←←← САМОЕ НАЧАЛО ФАЙЛА, ДО ВСЕГО!
+import 'core-js/stable'
+import 'regenerator-runtime/runtime'
+
+import { Buffer } from 'buffer'
+import process from 'process'
+
+window.Buffer = window.Buffer || Buffer
+window.process = window.process || process
+window.global = window.global || window
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -12,5 +20,5 @@ createRoot(document.getElementById('root')).render(
     <TonConnectProvider>
       <App />
     </TonConnectProvider>
-  </StrictMode>,
+  </StrictMode>
 )
