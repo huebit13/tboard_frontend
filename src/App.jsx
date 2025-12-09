@@ -47,6 +47,10 @@ const GameComponents = {
 }
 
 const TBoardApp = () => {
+  console.log('📍 Full window.Telegram:', window.Telegram);
+  console.log('📍 URL:', window.location.href);
+  console.log('📍 Search params:', window.location.search);
+  
   const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 
   if (!tg) {
