@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Share2, Users, Trophy, Gamepad2, Coins, X, Check, Zap, Sparkles, Search, Clock, Copy, TrendingUp, TrendingDown, ArrowLeft, Gift, RefreshCw } from 'lucide-react'
+import {
+  Share2, Users, Trophy, Gamepad2, Coins, Search, Clock, RefreshCw,
+  ArrowLeft, Gift, Zap, Sparkles, Check
+} from 'lucide-react'
 
 import { useTonWallet } from './hooks/useTonWallet'
 import { useUserInit } from './hooks/useUserInit'
@@ -15,6 +18,8 @@ import RockPaperScissors from './RockPaperScissors'
 import Checkers from './Checkers'
 import Chess from './Chess'
 import GameResultModal from './GameResultModal'
+import ShareModal from './components/ShareModal'
+import ProfileModal from './components/ProfileModal'
 
 // СТАТИЧЕСКИЕ ДАННЫЕ
 const GAMES = [
@@ -47,10 +52,9 @@ const GameComponents = {
 }
 
 const TBoardApp = () => {
-  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
+  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null
 
   if (!tg) {
-    // Показываем понятное сообщение вместо белого экрана
     return (
       <div style={{
         padding: '20px',
@@ -70,14 +74,14 @@ const TBoardApp = () => {
         </p>
         <p>
           Open via: <a 
-            href="https://t.me/tboard_bot" 
+            href="https://t.me/tboard_bot"
             style={{ color: '#0ea5e9', textDecoration: 'underline' }}
           >
             @tboard_bot
           </a>
         </p>
       </div>
-    );
+    )
   }
 
   useEffect(() => {
@@ -85,7 +89,16 @@ const TBoardApp = () => {
   }, [])
 
   const wallet = useTonWallet()
-  const { address, formattedAddress, balance, loading: balanceLoading, isConnected, connect, disconnect, refreshBalance } = wallet
+  const {
+    address,
+    formattedAddress,
+    balance,
+    loading: balanceLoading,
+    isConnected,
+    connect,
+    disconnect,
+    refreshBalance
+  } = wallet
 
   useUserInit()
   useWalletSync(wallet)
@@ -100,11 +113,12 @@ const TBoardApp = () => {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [activeGame, setActiveGame] = useState(null)
   const [gameResult, setGameResult] = useState(null)
+
   const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' })
   const [referralStats] = useState({
     referrals: 12,
     earned: 24.5,
-    link: 't.me/tboard_bot?start=ref_USER123'
+    link: 'https://t.me/tboard_bot?start=ref_USER123'
   })
   const [userStats] = useState({
     gamesPlayed: 47,
@@ -118,6 +132,7 @@ const TBoardApp = () => {
       { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
     ]
   })
+
   const [activeLobby] = useState(INITIAL_LOBBY)
 
   // Helpers
@@ -145,7 +160,7 @@ const TBoardApp = () => {
   const handleGameEnd = (result, amount) => {
     setGameResult({ result, amount })
     setActiveGame(null)
-    // ⚠️ wallet.balance не обновится! Используйте refreshBalance или обновите хук useTonWallet
+    refreshBalance() // обновляем баланс после игры
   }
 
   const handleCloseResult = () => {
@@ -203,16 +218,25 @@ const TBoardApp = () => {
       <header className="relative z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div onClick={handleProfileClick} className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl cursor-pointer hover:scale-110 transition-transform">
+            <div
+              onClick={handleProfileClick}
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-xl cursor-pointer hover:scale-110 transition-transform"
+            >
               {userProfile.avatar}
             </div>
-            <button onClick={handleShare} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all flex items-center gap-2"
+            >
               <Share2 className="w-4 h-4" />
               <span className="text-sm font-semibold">Share</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg group cursor-pointer" onClick={refreshBalance}>
+          <div
+            className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg group cursor-pointer"
+            onClick={refreshBalance}
+          >
             <Coins className="w-5 h-5 text-yellow-400" />
             <span className="font-bold text-lg">
               {balanceLoading ? '...' : balance.toFixed(2)}
@@ -341,13 +365,33 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
-      {/* ShareModal и ProfileModal — можно тоже вынести, но для краткости оставим в основном файле или сделайте по аналогии */}
+      {/* ====== ВНЕСЕННЫЕ МОДАЛКИ ====== */}
+      <GameResultModal
+        result={gameResult?.result}
+        amount={gameResult?.amount}
+        onClose={handleCloseResult}
+      />
 
-      {gameResult && (
-        <GameResultModal result={gameResult.result} amount={gameResult.amount} onClose={handleCloseResult} />
-      )}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        referralStats={referralStats}
+        onCopyLink={handleCopyLink}
+      />
 
-      {/* === Здесь можно вставить ShareModal и ProfileModal как отдельные компоненты (аналогично) === */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userProfile={userProfile}
+        address={address}
+        formattedAddress={formattedAddress}
+        balance={balance}
+        balanceLoading={balanceLoading}
+        userStats={userStats}
+        onCopyAddress={handleCopyAddress}
+        onDisconnectWallet={handleDisconnectWallet}
+        getGameData={getGameData}
+      />
     </div>
   )
 }
