@@ -3,6 +3,9 @@ import { Trophy, TrendingDown, Coins } from 'lucide-react'
 const GameResultModal = ({ result, amount, onClose }) => {
   const isWin = result === 'win'
 
+  // 🔒 Защита от некорректного значения amount
+  const safeAmount = typeof amount === 'number' ? amount : 0
+
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-slate-900 border-2 border-slate-700 rounded-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
@@ -39,7 +42,7 @@ const GameResultModal = ({ result, amount, onClose }) => {
               <Coins className={`w-8 h-8 ${isWin ? 'text-yellow-400' : 'text-gray-400'}`} />
               <div>
                 <div className={`text-3xl font-bold ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                  {isWin ? '+' : ''}{amount.toFixed(2)} TON
+                  {isWin ? '+' : ''}{safeAmount.toFixed(2)} TON
                 </div>
                 <div className="text-sm text-gray-400">
                   {isWin ? 'Added to your balance' : 'Lost in this game'}

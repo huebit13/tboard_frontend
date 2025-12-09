@@ -17,7 +17,7 @@ import LobbyItem from './components/LobbyItem'
 import RockPaperScissors from './RockPaperScissors'
 import Checkers from './Checkers'
 import Chess from './Chess'
-import GameResultModal from './GameResultModal'
+import GameResultModal from './components/GameResultModal'
 import ShareModal from './components/ShareModal'
 import ProfileModal from './components/ProfileModal'
 
