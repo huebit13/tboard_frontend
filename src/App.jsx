@@ -271,6 +271,8 @@ const TBoardApp = () => {
     alert('Address copied!')
   }
 
+  const getGameData = (gameId) => GAMES.find(g => g.id === gameId);
+
   // Non-connected view
   if (!isConnected) {
     return <WelcomeScreen onConnect={connect} />
