@@ -72,7 +72,7 @@ const TBoardApp = () => {
         </p>
         <p>
           Open via: <a 
-            href="https://t.me/tboard_bot  "
+            href="https://t.me/tboard_bot    "
             style={{ color: '#0ea5e9', textDecoration: 'underline' }}
           >
             @tboard_bot
@@ -98,12 +98,46 @@ const TBoardApp = () => {
     refreshBalance
   } = wallet
 
+  // --- ВСЕ ХУКИ СНАЧАЛА ---
   const { token, user, loading } = useUserInit()
-  if (loading) {
-      return <div className="bg-slate-950 text-white min-h-screen flex items-center justify-center">Loading...</div>;
-  }
 
-  // Используем новый хук WebSocket
+  // --- Состояния ---
+  // Состояния WebSocket и игры
+  const [gameFoundData, setGameFoundData] = useState(null); // Информация о найденной игре
+  const [gameResult, setGameResult] = useState(null); // Результат игры от бэкенда
+  const [activeGame, setActiveGame] = useState(null); // Информация об активной игре (id, тип, ставка)
+  const [showWaitingOpponent, setShowWaitingOpponent] = useState(false); // Новый экран ожидания
+
+  // Состояния UI (старые)
+  const [showGameSelect, setShowGameSelect] = useState(false)
+  const [showBetSelect, setShowBetSelect] = useState(false)
+  const [selectedGame, setSelectedGame] = useState(null)
+  const [selectedBet, setSelectedBet] = useState(null)
+  const [showMatchmaking, setShowMatchmaking] = useState(false) // <-- Теперь это "поиск оппонента"
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+
+  // Состояния с фиксированными значениями (можно оставить, но useState не нужен)
+  const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' })
+  const [referralStats] = useState({
+    referrals: 12,
+    earned: 24.5,
+    link: 'https://t.me/tboard_bot?start=ref_USER123    '
+  })
+  const [userStats] = useState({
+    gamesPlayed: 47,
+    winRate: 68,
+    totalEarned: 156.8,
+    gameHistory: [
+      { id: 1, game: 'dice', bet: 10, result: 'win', amount: 20, date: '2 hours ago' },
+      { id: 2, game: 'coin', bet: 5, result: 'loss', amount: -5, date: '5 hours ago' },
+      { id: 3, game: 'rps', bet: 25, result: 'win', amount: 50, date: '1 day ago' },
+      { id: 4, game: 'roulette', bet: 50, result: 'win', amount: 100, date: '1 day ago' },
+      { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
+    ]
+  })
+
+  // --- Хук WebSocket ---
   const { connectionStatus, sendMessage } = useWebSocket(
     token, // Передаём токен
     (data) => { // onMessage
@@ -111,11 +145,9 @@ const TBoardApp = () => {
       switch (data.type) {
         case 'game_found':
           // Найден оппонент
-          setGameFoundData(data); // <-- Новое состояние
-          setShowWaitingOpponent(false); // Закрываем предыдущий экран поиска
-          // setShowGameStart(true); // Можно открыть экран ожидания начала или сразу начать
-          // Пока перейдём к игре напрямую
-          setActiveGame({ gameType: data.game_type, bet: data.stake, id: data.game_id }); // Добавим game_id
+          setGameFoundData(data);
+          setShowWaitingOpponent(false);
+          setActiveGame({ gameType: data.game_type, bet: data.stake, id: data.game_id });
           break;
         case 'game_result':
           // Игра завершена
@@ -146,48 +178,12 @@ const TBoardApp = () => {
     }
   );
 
-  // --- Новое состояние для WebSocket и игр ---
-  const [gameFoundData, setGameFoundData] = useState(null); // Информация о найденной игре
-  const [gameResult, setGameResult] = useState(null); // Результат игры от бэкенда
-  const [activeGame, setActiveGame] = useState(null); // Информация об активной игре (id, тип, ставка)
-  const [showWaitingOpponent, setShowWaitingOpponent] = useState(false); // Новый экран ожидания
-  // --- /Новое состояние ---
+  // --- Проверка загрузки ПОСЛЕ всех хуков ---
+  if (loading) {
+      return <div className="bg-slate-950 text-white min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
-  // State (старое)
-  const [showGameSelect, setShowGameSelect] = useState(false)
-  const [showBetSelect, setShowBetSelect] = useState(false)
-  const [selectedGame, setSelectedGame] = useState(null)
-  const [selectedBet, setSelectedBet] = useState(null)
-  const [showMatchmaking, setShowMatchmaking] = useState(false) // <-- Теперь это "поиск оппонента"
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [showProfileModal, setShowProfileModal] = useState(false)
-  // const [activeGame, setActiveGame] = useState(null) // <-- Перемещено наверх
-  // const [gameResult, setGameResult] = useState(null) // <-- Перемещено наверх
-
-  const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' })
-  const [referralStats] = useState({
-    referrals: 12,
-    earned: 24.5,
-    link: 'https://t.me/tboard_bot?start=ref_USER123  '
-  })
-  const [userStats] = useState({
-    gamesPlayed: 47,
-    winRate: 68,
-    totalEarned: 156.8,
-    gameHistory: [
-      { id: 1, game: 'dice', bet: 10, result: 'win', amount: 20, date: '2 hours ago' },
-      { id: 2, game: 'coin', bet: 5, result: 'loss', amount: -5, date: '5 hours ago' },
-      { id: 3, game: 'rps', bet: 25, result: 'win', amount: 50, date: '1 day ago' },
-      { id: 4, game: 'roulette', bet: 50, result: 'win', amount: 100, date: '1 day ago' },
-      { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
-    ]
-  })
-
-  // const [activeLobby] = useState(INITIAL_LOBBY) // <-- Убрано
-
-  // Helpers
-  const getGameData = (gameId) => GAMES.find(g => g.id === gameId)
-
+  // --- Обработчики ---
   // --- Новые обработчики для WebSocket ---
   const handleJoinQueue = () => {
     if (connectionStatus !== 'connected') {
