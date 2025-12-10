@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState, useEffect } from 'react'
 import {
   Share2, Users, Trophy, Gamepad2, Coins, Search, Clock, RefreshCw,
@@ -7,6 +8,7 @@ import {
 import { useTonWallet } from './hooks/useTonWallet'
 import { useUserInit } from './hooks/useUserInit'
 import { useWalletSync } from './hooks/useWalletSync'
+import { useWebSocket } from './hooks/useWebSocket' // <-- Импортируем новый хук
 
 import WelcomeScreen from './components/WelcomeScreen'
 import ModalWrapper from './components/ModalWrapper'
@@ -14,7 +16,7 @@ import GameButton from './components/GameButton'
 import BetButton from './components/BetButton'
 import LobbyItem from './components/LobbyItem'
 
-import RockPaperScissors from './games/RockPaperScissors'
+import RockPaperScissors from './games/RockPaperScissors' // <-- Пока используем как есть, но логика будет в App
 import Checkers from './games/Checkers'
 import Chess from './games/Chess'
 import GameResultModal from './components/GameResultModal'
@@ -38,12 +40,8 @@ const BET_AMOUNTS = [
   { value: 10, label: '10 TON' }
 ]
 
-const INITIAL_LOBBY = [
-  { id: 1, game: 'rps', bet: 5, player: 'CryptoKing', avatar: '👑', time: '2m' },
-  { id: 2, game: 'chess', bet: 10, player: 'MoonBoy', avatar: '🌙', time: '5m' },
-  { id: 3, game: 'checkers', bet: 1, player: 'DiamondHands', avatar: '💎', time: '1m' },
-  { id: 4, game: 'dice', bet: 25, player: 'WhaleAlert', avatar: '🐋', time: '3m' }
-]
+// Убираем INITIAL_LOBBY, так как лобби будет обновляться с бэкенда (в будущем)
+// const INITIAL_LOBBY = [...];
 
 const GameComponents = {
   rps: RockPaperScissors,
@@ -74,7 +72,7 @@ const TBoardApp = () => {
         </p>
         <p>
           Open via: <a 
-            href="https://t.me/tboard_bot"
+            href="https://t.me/tboard_bot  "
             style={{ color: '#0ea5e9', textDecoration: 'underline' }}
           >
             @tboard_bot
@@ -100,25 +98,77 @@ const TBoardApp = () => {
     refreshBalance
   } = wallet
 
-  useUserInit()
-  useWalletSync(wallet)
+  const { token, user, loading } = useUserInit()
+  if (loading) {
+      return <div className="bg-slate-950 text-white min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
-  // State
+  // Используем новый хук WebSocket
+  const { connectionStatus, sendMessage } = useWebSocket(
+    token, // Передаём токен
+    (data) => { // onMessage
+      console.log("App received WebSocket message:", data);
+      switch (data.type) {
+        case 'game_found':
+          // Найден оппонент
+          setGameFoundData(data); // <-- Новое состояние
+          setShowWaitingOpponent(false); // Закрываем предыдущий экран поиска
+          // setShowGameStart(true); // Можно открыть экран ожидания начала или сразу начать
+          // Пока перейдём к игре напрямую
+          setActiveGame({ gameType: data.game_type, bet: data.stake, id: data.game_id }); // Добавим game_id
+          break;
+        case 'game_result':
+          // Игра завершена
+          setGameResult({ winnerId: data.winner_id, finalState: data.final_state });
+          refreshBalance(); // Обновляем баланс после игры
+          break;
+        case 'error':
+          alert(`WebSocket Error: ${data.message}`);
+          break;
+        default:
+          console.log("Unknown WebSocket message type:", data.type);
+      }
+    },
+    (event) => { // onOpen
+      console.log("App: WebSocket opened.");
+    },
+    (event) => { // onClose
+      console.log("App: WebSocket closed.");
+      // Попытаться переподключиться или сбросить состояние игры?
+      setActiveGame(null);
+      setGameFoundData(null);
+      setGameResult(null);
+      // setShowMatchmaking(false); // Если было открыто
+    },
+    (event) => { // onError
+      console.error("App: WebSocket error:", event);
+      // setShowMatchmaking(false); // Если было открыто
+    }
+  );
+
+  // --- Новое состояние для WebSocket и игр ---
+  const [gameFoundData, setGameFoundData] = useState(null); // Информация о найденной игре
+  const [gameResult, setGameResult] = useState(null); // Результат игры от бэкенда
+  const [activeGame, setActiveGame] = useState(null); // Информация об активной игре (id, тип, ставка)
+  const [showWaitingOpponent, setShowWaitingOpponent] = useState(false); // Новый экран ожидания
+  // --- /Новое состояние ---
+
+  // State (старое)
   const [showGameSelect, setShowGameSelect] = useState(false)
   const [showBetSelect, setShowBetSelect] = useState(false)
   const [selectedGame, setSelectedGame] = useState(null)
   const [selectedBet, setSelectedBet] = useState(null)
-  const [showMatchmaking, setShowMatchmaking] = useState(false)
+  const [showMatchmaking, setShowMatchmaking] = useState(false) // <-- Теперь это "поиск оппонента"
   const [showShareModal, setShowShareModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [activeGame, setActiveGame] = useState(null)
-  const [gameResult, setGameResult] = useState(null)
+  // const [activeGame, setActiveGame] = useState(null) // <-- Перемещено наверх
+  // const [gameResult, setGameResult] = useState(null) // <-- Перемещено наверх
 
   const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' })
   const [referralStats] = useState({
     referrals: 12,
     earned: 24.5,
-    link: 'https://t.me/tboard_bot?start=ref_USER123'
+    link: 'https://t.me/tboard_bot?start=ref_USER123  '
   })
   const [userStats] = useState({
     gamesPlayed: 47,
@@ -133,12 +183,42 @@ const TBoardApp = () => {
     ]
   })
 
-  const [activeLobby] = useState(INITIAL_LOBBY)
+  // const [activeLobby] = useState(INITIAL_LOBBY) // <-- Убрано
 
   // Helpers
   const getGameData = (gameId) => GAMES.find(g => g.id === gameId)
 
-  // Handlers
+  // --- Новые обработчики для WebSocket ---
+  const handleJoinQueue = () => {
+    if (connectionStatus !== 'connected') {
+      alert("WebSocket is not connected. Please wait or refresh.");
+      return;
+    }
+    if (!selectedGame || !selectedBet) {
+      alert("Please select a game and a bet first.");
+      return;
+    }
+    if (balance < selectedBet.value) {
+      alert("Insufficient balance for this bet.");
+      return;
+    }
+    console.log("Joining queue for game:", selectedGame.id, "with bet:", selectedBet.value);
+    sendMessage({ action: 'join_queue', game_type: selectedGame.id, stake: selectedBet.value });
+    setShowGameSelect(false); // Закрываем модалы выбора
+    setShowBetSelect(false);
+    setShowMatchmaking(true); // Показываем экран поиска
+  };
+
+  const handleMakeMove = (move) => {
+    if (activeGame && connectionStatus === 'connected') {
+      sendMessage({ action: 'make_move', game_id: activeGame.id, move: move });
+    } else {
+      console.warn("Cannot send move: game not active or WebSocket not connected.");
+    }
+  };
+  // --- /Новые обработчики ---
+
+  // Handlers (обновлённые)
   const handleCreateGame = () => setShowGameSelect(true)
 
   const handleGameSelect = (game) => {
@@ -150,30 +230,33 @@ const TBoardApp = () => {
   const handleBetSelect = (bet) => {
     setSelectedBet(bet)
     setShowBetSelect(false)
-    setShowMatchmaking(true)
-    setTimeout(() => {
-      setShowMatchmaking(false)
-      setActiveGame({ gameType: selectedGame.id, bet: bet.value })
-    }, 2000)
+    // setShowMatchmaking(true) // Перенесено в handleJoinQueue
+    // setTimeout(() => { // Убираем таймаут, бэкенд сам найдёт оппонента
+    //   setShowMatchmaking(false)
+    //   setActiveGame({ gameType: selectedGame.id, bet: bet.value })
+    // }, 2000)
+    handleJoinQueue(); // Вызываем сразу после выбора ставки
   }
 
-  const handleGameEnd = (result, amount) => {
-    setGameResult({ result, amount })
-    setActiveGame(null)
-    refreshBalance() // обновляем баланс после игры
-  }
+  // const handleGameEnd = (result, amount) => { // <-- Убираем старый обработчик
+  //   setGameResult({ result, amount })
+  //   setActiveGame(null)
+  //   refreshBalance() // обновляем баланс после игры
+  // }
 
   const handleCloseResult = () => {
     setGameResult(null)
     setSelectedGame(null)
     setSelectedBet(null)
+    setActiveGame(null); // Закрываем активную игру
   }
 
   const handleExitGame = () => {
     if (window.confirm('Are you sure you want to exit the game? You will lose your bet.')) {
-      setActiveGame(null)
+      setActiveGame(null) // Просто сбрасываем локальное состояние игры
       setSelectedGame(null)
       setSelectedBet(null)
+      // TODO: Отправить сообщение на бэкенд о выходе?
     }
   }
 
@@ -197,13 +280,22 @@ const TBoardApp = () => {
     return <WelcomeScreen onConnect={connect} />
   }
 
-  // Active game view
+  // --- Активная игра через WebSocket ---
   if (activeGame) {
     const GameComponent = GameComponents[activeGame.gameType]
     if (GameComponent) {
-      return <GameComponent bet={activeGame.bet} onExit={handleExitGame} onGameEnd={handleGameEnd} />
+      // Передаём game_id и функцию отправки хода в компонент игры
+      return <GameComponent
+        bet={activeGame.bet}
+        gameId={activeGame.id} // <-- Передаём ID игры
+        onExit={handleExitGame}
+        onMakeMove={handleMakeMove} // <-- Передаём функцию отправки хода
+        // onGameEnd={handleGameEnd} // <-- Убираем старый обработчик
+      />
     }
   }
+  // --- /Активная игра через WebSocket ---
+
 
   return (
     <div className="bg-slate-950 text-white min-h-screen font-sans overflow-x-hidden relative">
@@ -267,19 +359,18 @@ const TBoardApp = () => {
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
         </button>
 
+        {/* Заглушка для лобби, пока не подключено к бэкенду */}
         <div className="space-y-4">
-          {activeLobby.map((lobby) => (
-            <LobbyItem key={lobby.id} lobby={lobby} gameData={getGameData(lobby.game)} />
-          ))}
+          <p className="text-center text-gray-500">Looking for active games...</p>
         </div>
 
-        {activeLobby.length === 0 && (
+        {/* {activeLobby.length === 0 && (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">No active games</p>
             <p className="text-gray-500 text-sm">Be the first to create a challenge!</p>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Modals */}
@@ -319,20 +410,22 @@ const TBoardApp = () => {
                 key={bet.value}
                 bet={bet}
                 canAfford={balance >= bet.value}
-                onClick={() => handleBetSelect(bet)}
+                onClick={() => handleBetSelect(bet)} // Теперь вызывает handleJoinQueue
               />
             ))}
           </div>
         </ModalWrapper>
       )}
 
+      {/* --- Новый модал поиска оппонента (заменяет старый matchmaking) --- */}
       {showMatchmaking && selectedGame && selectedBet && (
         <ModalWrapper
           title=""
           onClose={() => {
-            setShowMatchmaking(false)
-            setSelectedGame(null)
-            setSelectedBet(null)
+            // sendMessage({ action: 'leave_queue' }); // TODO: Реализовать на бэкенде
+            setShowMatchmaking(false);
+            setSelectedGame(null);
+            setSelectedBet(null);
           }}
         >
           <div className="mb-6">
@@ -354,9 +447,10 @@ const TBoardApp = () => {
 
           <button
             onClick={() => {
-              setShowMatchmaking(false)
-              setSelectedGame(null)
-              setSelectedBet(null)
+              // sendMessage({ action: 'leave_queue' }); // TODO: Реализовать на бэкенде
+              setShowMatchmaking(false);
+              setSelectedGame(null);
+              setSelectedBet(null);
             }}
             className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold transition-all"
           >
@@ -365,12 +459,17 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
-      {/* ====== ВНЕСЕННЫЕ МОДАЛКИ ====== */}
-      <GameResultModal
-        result={gameResult?.result}
-        amount={gameResult?.amount}
-        onClose={handleCloseResult}
-      />
+      {gameResult && user && ( // Показываем только если gameResult и user не null
+        <GameResultModal
+          // result={gameResult?.result} // <-- Старое свойство
+          // amount={gameResult?.amount} // <-- Старое свойство
+          // Передаём данные из бэкенда
+          winnerId={gameResult.winnerId}
+          finalState={gameResult.finalState}
+          currentUserId={user.id} // <-- ПЕРЕДАТЬ currentUserId ИЗ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
+          onClose={handleCloseResult}
+        />
+      )}
 
       <ShareModal
         isOpen={showShareModal}
