@@ -235,6 +235,28 @@ const TBoardApp = () => {
     return unsubscribe;
   }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby]);
 
+
+  // Автоматически покидать лобби при закрытии вкладки или размонтировании
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (currentLobby) {
+        sendMessage({ action: 'leave_lobby', lobby_id: currentLobby.id });
+      }
+      // event.preventDefault(); // не работает в большинстве браузеров для TMA
+      return null;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Также отправляем при размонтировании компонента (например, при выходе из игры)
+      if (currentLobby) {
+        sendMessage({ action: 'leave_lobby', lobby_id: currentLobby.id });
+      }
+    };
+  }, [currentLobby, sendMessage]);
+  
   if (loading) {
     return (
       <div className="bg-slate-950 text-white min-h-screen flex items-center justify-center">

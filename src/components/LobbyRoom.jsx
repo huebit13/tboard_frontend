@@ -27,6 +27,12 @@ const LobbyRoom = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  useEffect(() => {
+    return () => {
+      sendMessage({ action: 'leave_lobby', lobby_id: lobby.id });
+    };
+  }, [lobby.id, sendMessage]);
+
   return (
     <div className="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
       {/* Header */}
