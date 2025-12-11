@@ -8,7 +8,7 @@ import { Trophy, TrendingDown, Coins } from 'lucide-react';
 const GameResultModal = ({ winnerId, finalState, currentUserId, onClose }) => {
   // Определяем результат на основе winnerId и currentUserId
   const isWin = winnerId != null && currentUserId != null && String(winnerId) === String(currentUserId);
-  const isDraw = winnerId === null;
+  const isDraw = winnerId == null;
 
   let resultText = "Draw";
   let amount = 0; // Это нужно будет рассчитать на бэкенде и передать, либо вычислить на фронте на основе ставки и рейка
