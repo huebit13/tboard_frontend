@@ -44,54 +44,6 @@ const GameComponents = {
 const TBoardApp = () => {
   const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 
-  if (!tg) {
-    return (
-      <div style={{
-        padding: '20px',
-        backgroundColor: '#0f172a',
-        color: 'white',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        fontFamily: 'sans-serif'
-      }}>
-        <h2 style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️ Launch Required</h2>
-        <p style={{ marginBottom: '8px' }}>
-          This app works only inside Telegram as a Mini App.
-        </p>
-        <p>
-          Open via: <a 
-            href="https://t.me/tboard_bot"
-            style={{ color: '#0ea5e9', textDecoration: 'underline' }}
-          >
-            @tboard_bot
-          </a>
-        </p>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    if (tg) tg.ready();
-  }, []);
-
-  const wallet = useTonWallet();
-  const {
-    address,
-    formattedAddress,
-    balance,
-    loading: balanceLoading,
-    isConnected,
-    connect,
-    disconnect,
-    refreshBalance
-  } = wallet;
-
-  const { token, user, loading } = useUserInit();
-
   // === Состояния ===
   const [gameFoundData, setGameFoundData] = useState(null);
   const [gameResult, setGameResult] = useState(null);
@@ -133,7 +85,53 @@ const TBoardApp = () => {
     ]
   });
 
+  const wallet = useTonWallet();
+  const {
+    address,
+    formattedAddress,
+    balance,
+    loading: balanceLoading,
+    isConnected,
+    connect,
+    disconnect,
+    refreshBalance
+  } = wallet;
+  const { token, user, loading } = useUserInit();
   const { connectionStatus, sendMessage, addMessageHandler } = useWebSocket(token);
+
+  useEffect(() => {
+    if (tg) tg.ready();
+  }, []);
+
+  if (!tg) {
+    return (
+      <div style={{
+        padding: '20px',
+        backgroundColor: '#0f172a',
+        color: 'white',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        fontFamily: 'sans-serif'
+      }}>
+        <h2 style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️ Launch Required</h2>
+        <p style={{ marginBottom: '8px' }}>
+          This app works only inside Telegram as a Mini App.
+        </p>
+        <p>
+          Open via: <a 
+            href="https://t.me/tboard_bot"
+            style={{ color: '#0ea5e9', textDecoration: 'underline' }}
+          >
+            @tboard_bot
+          </a>
+        </p>
+      </div>
+    );
+  }
 
   // === WebSocket обработчик ===
   useEffect(() => {
