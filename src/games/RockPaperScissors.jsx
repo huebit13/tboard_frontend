@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Clock, Zap } from 'lucide-react';
 
 const RockPaperScissors = ({ 
@@ -15,7 +15,9 @@ const RockPaperScissors = ({
   const [timeLeft, setTimeLeft] = useState(30);
   const [isChoosing, setIsChoosing] = useState(true);
   const [waitingForResult, setWaitingForResult] = useState(false);
+  const [roundFinished, setRoundFinished] = useState(false); // 🔑 Ключевая переменная
   const [currentScore, setCurrentScore] = useState({ player1: 0, player2: 0 });
+  const roundTimeoutRef = useRef(null);
 
   const choices = [
     { id: 'rock', emoji: '✊', name: 'Rock' },
@@ -23,16 +25,21 @@ const RockPaperScissors = ({
     { id: 'scissors', emoji: '✌️', name: 'Scissors' },
   ];
 
-  // Определяем, кто мы: player1 или player2
   const getPlayerRole = (userId) => {
-    // Предполагаем, что backend присылает player1 и player2 по user ID
-    // Если backend не даёт маппинг — нужно согласовать с ним
-    // Пока делаем упрощённо: если currentUserId < opponentId → player1
     return userId < opponentId ? 'player1' : 'player2';
   };
 
   const myRole = getPlayerRole(currentUserId);
   const opponentRole = myRole === 'player1' ? 'player2' : 'player1';
+
+  // Очистка таймера при размонтировании
+  useEffect(() => {
+    return () => {
+      if (roundTimeoutRef.current) {
+        clearTimeout(roundTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Слушаем WebSocket сообщения ТОЛЬКО для этой игры
   useEffect(() => {
@@ -45,37 +52,38 @@ const RockPaperScissors = ({
         case 'round_result':
           console.log('🧮 RPS round result:', data);
 
-          // Обновляем счёт
+          // Обновляем счёт немедленно
           setCurrentScore(data.score || { player1: 0, player2: 0 });
 
-          // Устанавливаем ходы
           const moves = data.moves || {};
           setMyChoice(moves[myRole] || null);
           setOpponentChoice(moves[opponentRole] || null);
 
           setWaitingForResult(false);
           setIsChoosing(false);
+          setRoundFinished(true); // 🔒 Блокируем ходы
 
-          // Проверяем, достиг ли кто-то 3 побед
           const myScore = data.score?.[myRole] || 0;
           const opponentScore = data.score?.[opponentRole] || 0;
 
+          // Если игра завершена — не запускаем новый раунд
           if (myScore >= 3 || opponentScore >= 3) {
-            // Игра завершена — дожидаемся game_result или можно закрыть через onExit
-            // Но лучше дождаться game_result (он приходит отдельно)
             return;
           }
 
           // Начинаем новый раунд через 2 секунды
-          const timer = setTimeout(() => {
+          if (roundTimeoutRef.current) {
+            clearTimeout(roundTimeoutRef.current);
+          }
+          roundTimeoutRef.current = setTimeout(() => {
             setMyChoice(null);
             setOpponentChoice(null);
             setIsChoosing(true);
             setWaitingForResult(false);
+            setRoundFinished(false); // ✅ Разблокируем
             setTimeLeft(30);
           }, 2000);
-
-          return () => clearTimeout(timer);
+          break;
 
         case 'game_result':
           console.log('🏆 RPS game result:', data);
@@ -84,11 +92,10 @@ const RockPaperScissors = ({
           setOpponentChoice(finalMoves[opponentRole] || null);
           setWaitingForResult(false);
           setIsChoosing(false);
-          // Финальный результат покажет App.jsx через gameResult modal
+          setRoundFinished(true);
           break;
 
         default:
-          // Игнорируем неизвестные типы
           break;
       }
     });
@@ -98,19 +105,23 @@ const RockPaperScissors = ({
 
   // Таймер для выбора хода
   useEffect(() => {
-    if (!isChoosing || myChoice || waitingForResult) return;
+    if (!isChoosing || myChoice || waitingForResult || roundFinished) return;
 
     if (timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !myChoice) {
+    } else if (timeLeft === 0) {
       const randomChoice = choices[Math.floor(Math.random() * 3)].id;
       handleChoice(randomChoice);
     }
-  }, [timeLeft, isChoosing, myChoice, waitingForResult]);
+  }, [timeLeft, isChoosing, myChoice, waitingForResult, roundFinished]);
 
   const handleChoice = (choiceId) => {
-    if (!isChoosing || myChoice || waitingForResult) return;
+    // 🔒 Главная защита от повторных ходов
+    if (!isChoosing || myChoice || waitingForResult || roundFinished) {
+      console.warn('Choice blocked: roundFinished=', roundFinished, 'myChoice=', myChoice);
+      return;
+    }
 
     setMyChoice(choiceId);
     setIsChoosing(false);
@@ -143,13 +154,13 @@ const RockPaperScissors = ({
             <p className="text-xs text-gray-400">
               {bet} TON • Game ID: {gameId}
             </p>
-            {/* Счёт */}
-            <div className="flex justify-center gap-4 mt-1 text-sm">
-              <span className={myScore >= 3 ? 'text-green-400 font-bold' : ''}>
+            {/* Счёт — теперь всегда виден */}
+            <div className="flex justify-center gap-4 mt-1 text-sm font-medium">
+              <span className={myScore >= 3 ? 'text-green-400 font-bold' : 'text-white'}>
                 You: {myScore}
               </span>
               <span>•</span>
-              <span className={opponentScore >= 3 ? 'text-red-400 font-bold' : ''}>
+              <span className={opponentScore >= 3 ? 'text-red-400 font-bold' : 'text-white'}>
                 Opponent: {opponentScore}
               </span>
             </div>
@@ -161,8 +172,8 @@ const RockPaperScissors = ({
       {/* Main Content */}
       <div className="px-4 py-6">
         <div className="max-w-4xl mx-auto">
-          {/* Timer */}
-          {isChoosing && !myChoice && (
+          {/* Timer — показываем только если раунд активен */}
+          {isChoosing && !myChoice && !roundFinished && (
             <div className="bg-slate-900 border-2 border-slate-700 rounded-xl p-4 text-center mb-6">
               <Clock className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
               <div className="text-3xl font-bold text-yellow-400">{timeLeft}s</div>
@@ -185,7 +196,9 @@ const RockPaperScissors = ({
                 ) : (
                   <div>
                     <div className="text-7xl mb-2">❓</div>
-                    <div className="text-lg text-gray-500">Choose...</div>
+                    <div className="text-lg text-gray-500">
+                      {isChoosing ? 'Choose...' : 'Waiting...'}
+                    </div>
                   </div>
                 )}
               </div>
@@ -205,15 +218,17 @@ const RockPaperScissors = ({
                 ) : (
                   <div>
                     <div className="text-7xl mb-2">❓</div>
-                    <div className="text-lg text-gray-500">Waiting...</div>
+                    <div className="text-lg text-gray-500">
+                      {waitingForResult ? 'Thinking...' : 'Waiting...'}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Choice Buttons */}
-          {isChoosing && !myChoice && (
+          {/* Choice Buttons — показываем ТОЛЬКО если раунд активен */}
+          {isChoosing && !myChoice && !roundFinished && (
             <div className="grid grid-cols-3 gap-4">
               {choices.map((choice) => (
                 <button
@@ -230,11 +245,27 @@ const RockPaperScissors = ({
             </div>
           )}
 
-          {waitingForResult && (
+          {/* Показываем статус после раунда */}
+          {roundFinished && !isChoosing && (
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 bg-slate-900 px-6 py-3 rounded-lg border border-yellow-500/30">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <span className="text-gray-300">
+                  {myScore >= 3 || opponentScore >= 3 
+                    ? 'Game finished!' 
+                    : 'Next round starts soon...'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {waitingForResult && !roundFinished && (
             <div className="text-center">
               <div className="inline-flex items-center gap-2 bg-slate-900 px-6 py-3 rounded-lg">
                 <Zap className="w-5 h-5 text-yellow-400 animate-pulse" />
-                <span className="text-gray-400">Waiting for opponent's move...</span>
+                <span className="text-gray-400">
+                  Waiting for opponent's move...
+                </span>
               </div>
             </div>
           )}

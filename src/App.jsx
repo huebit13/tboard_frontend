@@ -167,6 +167,13 @@ const TBoardApp = () => {
           alert(`Error: ${data.message}`)
           setShowMatchmaking(false)
           break
+        case 'round_result':
+          // Игнорируем — этим управляет компонент игры
+          break;
+
+        case 'queue_joined':
+          // Опционально: тоже можно игнорировать
+          break;
           
         default:
           console.log("Unknown WebSocket message type:", data.type)
