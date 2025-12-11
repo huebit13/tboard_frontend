@@ -9,6 +9,7 @@ import { useTonWallet } from './hooks/useTonWallet';
 import { useUserInit } from './hooks/useUserInit';
 import { useWalletSync } from './hooks/useWalletSync';
 import { useWebSocket } from './hooks/useWebSocket';
+import { GAMES } from './constants/games';
 
 import WelcomeScreen from './components/WelcomeScreen';
 import ModalWrapper from './components/ModalWrapper';
@@ -24,13 +25,6 @@ import ProfileModal from './components/ProfileModal';
 import LobbyList from './components/LobbyList';
 import LobbyRoom from './components/LobbyRoom';
 import PasswordModal from './components/PasswordModal';
-
-const GAMES = [
-  { id: 'rps', name: 'Rock Paper Scissors', icon: '✊', color: 'cyan' },
-  { id: 'checkers', name: 'Checkers', icon: '🎯', color: 'purple' },
-  { id: 'chess', name: 'Chess', icon: '♟️', color: 'blue' },
-  { id: 'dice', name: 'Dice Battle', icon: '🎲', color: 'green' }
-];
 
 const BET_AMOUNTS = [
   { value: 0.05, label: '0.05 TON' },
