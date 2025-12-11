@@ -1,7 +1,7 @@
 // src/components/LobbyRoom.jsx
 import { useState, useEffect } from 'react';
 import { Users, Lock, Unlock, Check, X, UserMinus, Play, Gamepad2, Coins } from 'lucide-react';
-import { GAMES } from '../App.jsx';
+import { GAMES } from '../../constants/games';
 
 const LobbyRoom = ({ 
   lobby, 
