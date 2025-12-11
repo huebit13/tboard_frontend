@@ -9,7 +9,7 @@ import { useTonWallet } from './hooks/useTonWallet';
 import { useUserInit } from './hooks/useUserInit';
 import { useWalletSync } from './hooks/useWalletSync';
 import { useWebSocket } from './hooks/useWebSocket';
-import { GAMES } from './constants/games';
+import { GAMES } from '../constants/games';
 
 import WelcomeScreen from './components/WelcomeScreen';
 import ModalWrapper from './components/ModalWrapper';
