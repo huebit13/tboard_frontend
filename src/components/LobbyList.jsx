@@ -1,6 +1,6 @@
 // src/components/LobbyList.jsx
 import { Lock, Unlock, Users, Coins, Gamepad2 } from 'lucide-react';
-import { GAMES } from '../constants/games';
+import { GAMES } from '../../constants/games';
 
 const LobbyList = ({ lobbies, onJoin, isCreating }) => {
   const getGameIcon = (gameType) => {
