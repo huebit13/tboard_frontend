@@ -135,7 +135,17 @@ const TBoardApp = () => {
   useEffect(() => {
     const unsubscribe = addMessageHandler((data) => {
       console.log("App received WebSocket message:", data)
-      
+
+      if (data.type === 'game_result') {
+        console.log('🎯 game_result received', data);
+        console.log('👤 current user.id:', user?.id);
+        console.log('🏆 winner_id from backend:', data.winner_id);
+        setGameResult({ 
+          winnerId: data.winner_id, 
+          finalState: data.final_state 
+        });
+      }
+
       switch (data.type) {
         case 'connected':
           console.log('✅ Connected to game server')
@@ -472,11 +482,11 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
-      {gameResult && user && (
+      {gameResult && (
         <GameResultModal
           winnerId={gameResult.winnerId}
           finalState={gameResult.finalState}
-          currentUserId={user.id}
+          currentUserId={user?.id}
           onClose={handleCloseResult}
         />
       )}

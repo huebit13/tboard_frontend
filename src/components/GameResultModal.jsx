@@ -7,7 +7,7 @@ import { Trophy, TrendingDown, Coins } from 'lucide-react';
 // Для простоты, передадим isWinner из App.jsx.
 const GameResultModal = ({ winnerId, finalState, currentUserId, onClose }) => {
   // Определяем результат на основе winnerId и currentUserId
-  const isWin = winnerId !== null && winnerId === currentUserId;
+  const isWin = winnerId != null && currentUserId != null && String(winnerId) === String(currentUserId);
   const isDraw = winnerId === null;
 
   let resultText = "Draw";
