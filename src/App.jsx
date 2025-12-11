@@ -1,34 +1,36 @@
 // src/App.jsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import {
   Share2, Users, Trophy, Gamepad2, Coins, Search, Clock, RefreshCw,
-  ArrowLeft, Gift, Zap, Sparkles, Check
-} from 'lucide-react'
+  ArrowLeft, Gift, Zap, Sparkles, Check, Lock, Unlock
+} from 'lucide-react';
 
-import { useTonWallet } from './hooks/useTonWallet'
-import { useUserInit } from './hooks/useUserInit'
-import { useWalletSync } from './hooks/useWalletSync'
-import { useWebSocket } from './hooks/useWebSocket'
+import { useTonWallet } from './hooks/useTonWallet';
+import { useUserInit } from './hooks/useUserInit';
+import { useWalletSync } from './hooks/useWalletSync';
+import { useWebSocket } from './hooks/useWebSocket';
 
-import WelcomeScreen from './components/WelcomeScreen'
-import ModalWrapper from './components/ModalWrapper'
-import GameButton from './components/GameButton'
-import BetButton from './components/BetButton'
-import LobbyItem from './components/LobbyItem'
+import WelcomeScreen from './components/WelcomeScreen';
+import ModalWrapper from './components/ModalWrapper';
+import GameButton from './components/GameButton';
+import BetButton from './components/BetButton';
 
-import RockPaperScissors from './games/RockPaperScissors'
-import Checkers from './games/Checkers'
-import Chess from './games/Chess'
-import GameResultModal from './components/GameResultModal'
-import ShareModal from './components/ShareModal'
-import ProfileModal from './components/ProfileModal'
+import RockPaperScissors from './games/RockPaperScissors';
+import Checkers from './games/Checkers';
+import Chess from './games/Chess';
+import GameResultModal from './components/GameResultModal';
+import ShareModal from './components/ShareModal';
+import ProfileModal from './components/ProfileModal';
+import LobbyList from './components/LobbyList';
+import LobbyRoom from './components/LobbyRoom';
+import PasswordModal from './components/PasswordModal';
 
 const GAMES = [
   { id: 'rps', name: 'Rock Paper Scissors', icon: '✊', color: 'cyan' },
   { id: 'checkers', name: 'Checkers', icon: '🎯', color: 'purple' },
   { id: 'chess', name: 'Chess', icon: '♟️', color: 'blue' },
   { id: 'dice', name: 'Dice Battle', icon: '🎲', color: 'green' }
-]
+];
 
 const BET_AMOUNTS = [
   { value: 0.05, label: '0.05 TON' },
@@ -37,16 +39,16 @@ const BET_AMOUNTS = [
   { value: 1, label: '1 TON' },
   { value: 5, label: '5 TON' },
   { value: 10, label: '10 TON' }
-]
+];
 
 const GameComponents = {
   rps: RockPaperScissors,
   checkers: Checkers,
   chess: Chess
-}
+};
 
 const TBoardApp = () => {
-  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null
+  const tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 
   if (!tg) {
     return (
@@ -75,14 +77,14 @@ const TBoardApp = () => {
           </a>
         </p>
       </div>
-    )
+    );
   }
 
   useEffect(() => {
-    if (tg) tg.ready()
-  }, [])
+    if (tg) tg.ready();
+  }, []);
 
-  const wallet = useTonWallet()
+  const wallet = useTonWallet();
   const {
     address,
     formattedAddress,
@@ -92,29 +94,38 @@ const TBoardApp = () => {
     connect,
     disconnect,
     refreshBalance
-  } = wallet
+  } = wallet;
 
-  const { token, user, loading } = useUserInit()
+  const { token, user, loading } = useUserInit();
 
-  // Состояния
-  const [gameFoundData, setGameFoundData] = useState(null)
-  const [gameResult, setGameResult] = useState(null)
-  const [activeGame, setActiveGame] = useState(null)
-  const [showWaitingOpponent, setShowWaitingOpponent] = useState(false)
-  const [showGameSelect, setShowGameSelect] = useState(false)
-  const [showBetSelect, setShowBetSelect] = useState(false)
-  const [selectedGame, setSelectedGame] = useState(null)
-  const [selectedBet, setSelectedBet] = useState(null)
-  const [showMatchmaking, setShowMatchmaking] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [showProfileModal, setShowProfileModal] = useState(false)
+  // === Состояния ===
+  const [gameFoundData, setGameFoundData] = useState(null);
+  const [gameResult, setGameResult] = useState(null);
+  const [activeGame, setActiveGame] = useState(null);
+  const [showGameSelect, setShowGameSelect] = useState(false);
+  const [showBetSelect, setShowBetSelect] = useState(false);
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [selectedBet, setSelectedBet] = useState(null);
+  const [showMatchmaking, setShowMatchmaking] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-  const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' })
+  // === Состояния для лобби ===
+  const [lobbies, setLobbies] = useState([]);
+  const [currentLobby, setCurrentLobby] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordModalLobby, setPasswordModalLobby] = useState(null);
+  const [isCreatingLobby, setIsCreatingLobby] = useState(false);
+  const [showCreateLobbyGameSelect, setShowCreateLobbyGameSelect] = useState(false);
+  const [showCreateLobbyBetSelect, setShowCreateLobbyBetSelect] = useState(false);
+  const [createLobbyPassword, setCreateLobbyPassword] = useState('');
+
+  const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' });
   const [referralStats] = useState({
     referrals: 12,
     earned: 24.5,
     link: 'https://t.me/tboard_bot?start=ref_USER123'
-  })
+  });
   const [userStats] = useState({
     gamesPlayed: 47,
     winRate: 68,
@@ -126,63 +137,110 @@ const TBoardApp = () => {
       { id: 4, game: 'roulette', bet: 50, result: 'win', amount: 100, date: '1 day ago' },
       { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
     ]
-  })
+  });
 
-  // WebSocket хук (ИСПРАВЛЕНО - без callback'ов в параметрах)
-  const { connectionStatus, sendMessage, addMessageHandler } = useWebSocket(token)
+  const { connectionStatus, sendMessage, addMessageHandler } = useWebSocket(token);
 
-  // Регистрируем обработчики WebSocket сообщений
+  // === WebSocket обработчик ===
   useEffect(() => {
     const unsubscribe = addMessageHandler((data) => {
-      console.log("App received WebSocket message:", data)
+      console.log("App received WebSocket message:", data);
 
       switch (data.type) {
         case 'connected':
-          console.log('✅ Connected to game server')
-          break
-          
+          console.log('✅ Connected to game server');
+          // Запрашиваем список лобби при подключении
+          sendMessage({ action: 'get_lobby_list' });
+          break;
+
         case 'game_found':
-          console.log('🎮 Game found:', data)
-          setGameFoundData(data)
-          setShowWaitingOpponent(false)
-          setShowMatchmaking(false)
+          console.log('🎮 Game found:', data);
+          setGameFoundData(data);
+          setShowMatchmaking(false);
           setActiveGame({ 
             gameType: selectedGame?.id || data.game_type, 
             bet: selectedBet?.value || data.stake, 
             id: data.game_id 
-          })
-          break
-          
+          });
+          break;
+
         case 'game_result':
           setActiveGame(null);
-          console.log('🏆 Game result:', data)
+          setCurrentLobby(null);
+          console.log('🏆 Game result:', data);
           setGameResult({ 
             winnerId: data.winner_id, 
             finalState: data.final_state 
-          })
-          refreshBalance()
-          break
-          
+          });
+          refreshBalance();
+          break;
+
+        case 'lobby_list':
+          setLobbies(data.lobbies || []);
+          break;
+
+        case 'lobby_created':
+          setCurrentLobby({
+            id: data.lobby_id,
+            gameType: data.game_type,
+            bet: data.stake,
+            hasPassword: data.has_password,
+            creatorId: user?.id,
+            players: [{ id: user?.id, ready: false }],
+            isOwner: true
+          });
+          setIsCreatingLobby(false);
+          setShowCreateLobbyGameSelect(false);
+          setShowCreateLobbyBetSelect(false);
+          setCreateLobbyPassword('');
+          break;
+
+        case 'lobby_joined':
+          setCurrentLobby({
+            id: data.lobby_id,
+            gameType: data.game_type,
+            bet: data.stake,
+            hasPassword: data.has_password,
+            creatorId: data.creator_id,
+            players: [
+              { id: data.creator_id, ready: false },
+              { id: user?.id, ready: false }
+            ],
+            isOwner: false
+          });
+          break;
+
+        case 'lobby_updated':
+          if (currentLobby && currentLobby.id === data.lobby_id) {
+            const players = (data.players || []).filter(p => p);
+            setCurrentLobby(prev => ({ ...prev, players }));
+          }
+          break;
+
+        case 'kicked_from_obby':
+          alert("You were kicked from the lobby.");
+          setCurrentLobby(null);
+          break;
+
         case 'error':
-          console.error('❌ WebSocket Error:', data.message)
-          alert(`Error: ${data.message}`)
-          setShowMatchmaking(false)
-          break
+          console.error('❌ WebSocket Error:', data.message);
+          alert(`Error: ${data.message}`);
+          setShowMatchmaking(false);
+          break;
+
         case 'round_result':
-          // Игнорируем — этим управляет компонент игры
           break;
 
         case 'queue_joined':
-          // Опционально: тоже можно игнорировать
           break;
-          
-        default:
-          console.log("Unknown WebSocket message type:", data.type)
-      }
-    })
 
-    return unsubscribe
-  }, [addMessageHandler, refreshBalance, selectedGame, selectedBet])
+        default:
+          console.log("Unknown WebSocket message type:", data.type);
+      }
+    });
+
+    return unsubscribe;
+  }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby]);
 
   if (loading) {
     return (
@@ -192,105 +250,168 @@ const TBoardApp = () => {
           <div className="text-xl">Loading TBoard...</div>
         </div>
       </div>
-    )
+    );
   }
 
-  // Обработчики
+  // === Обработчики Quick Play (старая очередь) ===
   const handleJoinQueue = () => {
     if (connectionStatus !== 'connected') {
-      alert("WebSocket is not connected. Please wait or refresh.")
-      return
+      alert("WebSocket is not connected.");
+      return;
     }
     if (!selectedGame || !selectedBet) {
-      alert("Please select a game and a bet first.")
-      return
+      alert("Select game and bet.");
+      return;
     }
     if (balance < selectedBet.value) {
-      alert("Insufficient balance for this bet.")
-      return
+      alert("Insufficient balance.");
+      return;
     }
-    
-    console.log("📤 Joining queue:", selectedGame.id, selectedBet.value)
     const success = sendMessage({ 
       action: 'join_queue', 
       game_type: selectedGame.id, 
       stake: selectedBet.value 
-    })
-    
+    });
     if (success) {
-      setShowGameSelect(false)
-      setShowBetSelect(false)
-      setShowMatchmaking(true)
-    } else {
-      alert("Failed to join queue. Please try again.")
+      setShowGameSelect(false);
+      setShowBetSelect(false);
+      setShowMatchmaking(true);
     }
-  }
+  };
 
+  const handleGameSelect = (game) => {
+    setSelectedGame(game);
+    setShowGameSelect(false);
+    setShowBetSelect(true);
+  };
+
+  const handleBetSelect = (bet) => {
+    setSelectedBet(bet);
+    setShowBetSelect(false);
+    handleJoinQueue();
+  };
+
+  // === Обработчики лобби ===
+  const handleCreateLobbyGameSelect = (game) => {
+    setSelectedGame(game);
+    setShowCreateLobbyGameSelect(false);
+    setShowCreateLobbyBetSelect(true);
+  };
+
+  const handleCreateLobbyBetSelect = (bet) => {
+    setSelectedBet(bet);
+    setShowCreateLobbyBetSelect(false);
+    setShowPasswordPrompt(true);
+  };
+
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const handlePasswordConfirm = () => {
+    setIsCreatingLobby(true);
+    sendMessage({
+      action: 'create_lobby',
+      game_type: selectedGame.id,
+      stake: selectedBet.value,
+      password: createLobbyPassword || undefined
+    });
+    setShowPasswordPrompt(false);
+  };
+
+  const handleJoinLobby = (lobby) => {
+    if (lobby.has_password) {
+      setPasswordModalLobby(lobby);
+      setShowPasswordModal(true);
+    } else {
+      sendMessage({ action: 'join_lobby', lobby_id: lobby.id });
+    }
+  };
+
+  const handlePasswordSubmit = (password) => {
+    sendMessage({
+      action: 'join_lobby',
+      lobby_id: passwordModalLobby.id,
+      password: password
+    });
+    setShowPasswordModal(false);
+  };
+
+  const handleLobbyLeave = () => {
+    sendMessage({ action: 'leave_lobby', lobby_id: currentLobby.id });
+    setCurrentLobby(null);
+  };
+
+  const handleLobbyKick = (targetId) => {
+    sendMessage({
+      action: 'kick_player',
+      lobby_id: currentLobby.id,
+      target_id: targetId
+    });
+  };
+
+  const handleLobbyReadyToggle = (isReady) => {
+    sendMessage({
+      action: 'set_lobby_ready',
+      lobby_id: currentLobby.id,
+      is_ready: isReady
+    });
+  };
+
+  const handleLobbyStart = () => {
+    sendMessage({
+      action: 'start_game',
+      lobby_id: currentLobby.id
+    });
+  };
+
+  // === Общие обработчики ===
   const handleMakeMove = (move) => {
     if (activeGame && connectionStatus === 'connected') {
-      console.log("📤 Sending move:", move)
       sendMessage({ 
         action: 'make_move', 
         game_id: activeGame.id, 
         move: move 
-      })
-    } else {
-      console.warn("⚠️  Cannot send move: game not active or WebSocket not connected.")
+      });
     }
-  }
-
-  const handleCreateGame = () => setShowGameSelect(true)
-
-  const handleGameSelect = (game) => {
-    setSelectedGame(game)
-    setShowGameSelect(false)
-    setShowBetSelect(true)
-  }
-
-  const handleBetSelect = (bet) => {
-    setSelectedBet(bet)
-    setShowBetSelect(false)
-    handleJoinQueue()
-  }
-
-  const handleCloseResult = () => {
-    setGameResult(null)
-    setSelectedGame(null)
-    setSelectedBet(null)
-    setActiveGame(null)
-  }
+  };
 
   const handleExitGame = () => {
-    if (window.confirm('Are you sure you want to exit the game? You will lose your bet.')) {
-      setActiveGame(null)
-      setSelectedGame(null)
-      setSelectedBet(null)
+    if (window.confirm('Exit game? You will lose your bet.')) {
+      setActiveGame(null);
+      setSelectedGame(null);
+      setSelectedBet(null);
     }
-  }
+  };
 
-  const handleShare = () => setShowShareModal(true)
-  const handleProfileClick = () => setShowProfileModal(true)
+  const handleCloseResult = () => {
+    setGameResult(null);
+    setSelectedGame(null);
+    setSelectedBet(null);
+    setActiveGame(null);
+  };
+
+  const handleShare = () => setShowShareModal(true);
+  const handleProfileClick = () => setShowProfileModal(true);
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(referralStats.link)
-    alert('Referral link copied!')
-  }
+    navigator.clipboard.writeText(referralStats.link);
+    alert('Referral link copied!');
+  };
   const handleDisconnectWallet = async () => {
-    await disconnect()
-    setShowProfileModal(false)
-  }
+    await disconnect();
+    setShowProfileModal(false);
+  };
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(address)
-    alert('Address copied!')
-  }
+    navigator.clipboard.writeText(address);
+    alert('Address copied!');
+  };
 
-  const getGameData = (gameId) => GAMES.find(g => g.id === gameId)
+  const getGameData = (gameId) => GAMES.find(g => g.id === gameId);
 
   if (!isConnected) {
-    return <WelcomeScreen onConnect={connect} />
+    return <WelcomeScreen onConnect={connect} />;
   }
 
+  // === Активная игра ===
   if (activeGame) {
-    const GameComponent = GameComponents[activeGame.gameType]
+    const GameComponent = GameComponents[activeGame.gameType];
     if (GameComponent) {
       return <GameComponent
         bet={activeGame.bet}
@@ -300,10 +421,26 @@ const TBoardApp = () => {
         onExit={handleExitGame}
         onMakeMove={handleMakeMove}
         addMessageHandler={addMessageHandler}
-      />
+      />;
     }
   }
 
+  // === Комната лобби ===
+  if (currentLobby) {
+    return (
+      <LobbyRoom
+        lobby={currentLobby}
+        currentUserId={user?.id}
+        onLeave={handleLobbyLeave}
+        onKick={handleLobbyKick}
+        onReadyToggle={handleLobbyReadyToggle}
+        onStartGame={handleLobbyStart}
+        sendMessage={sendMessage}
+      />
+    );
+  }
+
+  // === Основной экран ===
   return (
     <div className="bg-slate-950 text-white min-h-screen font-sans overflow-x-hidden relative">
       {/* Background */}
@@ -331,7 +468,6 @@ const TBoardApp = () => {
               <span className="text-sm font-semibold">Share</span>
             </button>
           </div>
-
           <div
             className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg group cursor-pointer"
             onClick={refreshBalance}
@@ -344,8 +480,6 @@ const TBoardApp = () => {
             <RefreshCw className="w-4 h-4 text-gray-400 group-hover:text-cyan-400 group-hover:rotate-180 transition-all" />
           </div>
         </div>
-        
-        {/* WebSocket Status */}
         <div className="px-4 pb-2">
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
             connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
@@ -373,24 +507,41 @@ const TBoardApp = () => {
           <p className="text-gray-400">Join a game or create your own challenge</p>
         </div>
 
+        {/* Quick Play */}
         <button
-          onClick={handleCreateGame}
+          onClick={() => setShowGameSelect(true)}
           disabled={connectionStatus !== 'connected'}
-          className="w-full group relative px-6 py-4 rounded-xl font-bold overflow-hidden bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-xl hover:shadow-cyan-500/50 transition-all transform hover:scale-105 mb-6 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          className="w-full group relative px-6 py-4 rounded-xl font-bold overflow-hidden bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-xl hover:shadow-cyan-500/50 transition-all transform hover:scale-105 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="relative z-10 flex items-center justify-center gap-3 text-lg">
             <Gamepad2 className="w-6 h-6" />
-            Create Game
+            Quick Play
           </span>
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
         </button>
 
-        <div className="space-y-4">
-          <p className="text-center text-gray-500">Looking for active games...</p>
-        </div>
+        {/* Create Game */}
+        <button
+          onClick={() => setShowCreateLobbyGameSelect(true)}
+          disabled={connectionStatus !== 'connected'}
+          className="w-full group relative px-6 py-4 rounded-xl font-bold overflow-hidden bg-gradient-to-r from-purple-500 to-fuchsia-600 hover:shadow-xl hover:shadow-purple-500/50 transition-all transform hover:scale-105 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="relative z-10 flex items-center justify-center gap-3 text-lg">
+            <Users className="w-6 h-6" />
+            Create Game
+          </span>
+        </button>
+
+        {/* Список лобби */}
+        <LobbyList
+          lobbies={lobbies}
+          onJoin={handleJoinLobby}
+          isCreating={isCreatingLobby}
+        />
       </div>
 
-      {/* Modals */}
+      {/* === Модалы === */}
+      
+      {/* Quick Play: выбор игры */}
       {showGameSelect && (
         <ModalWrapper title="Choose Your Game" onClose={() => setShowGameSelect(false)}>
           <div className="grid grid-cols-2 gap-4">
@@ -401,14 +552,9 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
+      {/* Quick Play: выбор ставки */}
       {showBetSelect && selectedGame && (
-        <ModalWrapper
-          title=""
-          onClose={() => {
-            setShowBetSelect(false)
-            setSelectedGame(null)
-          }}
-        >
+        <ModalWrapper title="" onClose={() => { setShowBetSelect(false); setSelectedGame(null); }}>
           <div className="text-center mb-6">
             <div className="text-6xl mb-3">{selectedGame.icon}</div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
@@ -420,7 +566,6 @@ const TBoardApp = () => {
               <span className="font-bold text-yellow-400">{balance.toFixed(2)} TON</span>
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-3">
             {BET_AMOUNTS.map((bet) => (
               <BetButton
@@ -434,13 +579,74 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
+      {/* Create Game: выбор игры */}
+      {showCreateLobbyGameSelect && (
+        <ModalWrapper title="Choose Game" onClose={() => setShowCreateLobbyGameSelect(false)}>
+          <div className="grid grid-cols-2 gap-4">
+            {GAMES.map((game) => (
+              <GameButton key={game.id} game={game} onClick={() => handleCreateLobbyGameSelect(game)} />
+            ))}
+          </div>
+        </ModalWrapper>
+      )}
+
+      {/* Create Game: выбор ставки */}
+      {showCreateLobbyBetSelect && selectedGame && (
+        <ModalWrapper title="" onClose={() => { setShowCreateLobbyBetSelect(false); setSelectedGame(null); }}>
+          <div className="text-center mb-6">
+            <div className="text-6xl mb-3">{selectedGame.icon}</div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              {selectedGame.name}
+            </h2>
+            <p className="text-gray-400 mt-2">Select your bet amount</p>
+            <div className="mt-3 bg-slate-800 rounded-lg px-4 py-2 inline-flex items-center gap-2">
+              <span className="text-sm text-gray-400">Your balance:</span>
+              <span className="font-bold text-yellow-400">{balance.toFixed(2)} TON</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {BET_AMOUNTS.map((bet) => (
+              <BetButton
+                key={bet.value}
+                bet={bet}
+                canAfford={balance >= bet.value}
+                onClick={() => handleCreateLobbyBetSelect(bet)}
+              />
+            ))}
+          </div>
+        </ModalWrapper>
+      )}
+
+      {/* Ввод пароля для лобби */}
+      {showPasswordPrompt && selectedGame && selectedBet && (
+        <ModalWrapper title="🔒 Set Password (Optional)" onClose={() => setShowPasswordPrompt(false)}>
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold mb-4">Make your lobby private?</h2>
+            <input
+              type="password"
+              value={createLobbyPassword}
+              onChange={(e) => setCreateLobbyPassword(e.target.value)}
+              placeholder="Leave empty for public"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+            />
+          </div>
+          <button
+            onClick={handlePasswordConfirm}
+            className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-fuchsia-600 rounded-lg font-semibold"
+          >
+            Create Lobby
+          </button>
+        </ModalWrapper>
+      )}
+
+      {/* Матчмейкинг (Quick Play) */}
       {showMatchmaking && selectedGame && selectedBet && (
         <ModalWrapper
           title=""
           onClose={() => {
-            setShowMatchmaking(false)
-            setSelectedGame(null)
-            setSelectedBet(null)
+            setShowMatchmaking(false);
+            setSelectedGame(null);
+            setSelectedBet(null);
           }}
         >
           <div className="mb-6">
@@ -451,7 +657,6 @@ const TBoardApp = () => {
               <span className="text-xl font-bold text-yellow-400">{selectedBet.value} TON</span>
             </div>
           </div>
-
           <div className="mb-6">
             <Search className="w-16 h-16 text-cyan-400 mx-auto mb-4 animate-pulse" />
             <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
@@ -459,12 +664,11 @@ const TBoardApp = () => {
             </h3>
             <p className="text-gray-400">Finding a worthy challenger</p>
           </div>
-
           <button
             onClick={() => {
-              setShowMatchmaking(false)
-              setSelectedGame(null)
-              setSelectedBet(null)
+              setShowMatchmaking(false);
+              setSelectedGame(null);
+              setSelectedBet(null);
             }}
             className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold transition-all"
           >
@@ -473,6 +677,7 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
+      {/* Результат игры */}
       {gameResult && (
         <GameResultModal
           winnerId={gameResult.winnerId}
@@ -481,6 +686,14 @@ const TBoardApp = () => {
           onClose={handleCloseResult}
         />
       )}
+
+      {/* Пароль для присоединения */}
+      <PasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={handlePasswordSubmit}
+        lobbyName={passwordModalLobby?.creator_name || 'Private Lobby'}
+      />
 
       <ShareModal
         isOpen={showShareModal}
@@ -503,7 +716,7 @@ const TBoardApp = () => {
         getGameData={getGameData}
       />
     </div>
-  )
-}
+  );
+};
 
-export default TBoardApp
+export default TBoardApp;
