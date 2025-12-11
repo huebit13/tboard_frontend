@@ -210,9 +210,17 @@ const TBoardApp = () => {
           }
           break;
 
-        case 'kicked_from_obby':
+        case 'kicked_from_lobby':
           alert("You were kicked from the lobby.");
           setCurrentLobby(null);
+          break;
+        
+        case 'queue_left':
+          if (data.success) {
+            console.log('✅ Left queue successfully');
+          } else {
+            console.log('ℹ️ Already not in queue');
+          }
           break;
 
         case 'error':
