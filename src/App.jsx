@@ -287,8 +287,11 @@ const TBoardApp = () => {
       return <GameComponent
         bet={activeGame.bet}
         gameId={activeGame.id}
+        currentUserId={user?.id}
+        opponentId={gameFoundData?.opponent_id}
         onExit={handleExitGame}
         onMakeMove={handleMakeMove}
+        addMessageHandler={addMessageHandler}
       />
     }
   }
