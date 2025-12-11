@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Share2, Users, Trophy, Gamepad2, Coins, Search, Clock, RefreshCw,
   ArrowLeft, Gift, Zap, Sparkles, Check, Lock, Unlock
