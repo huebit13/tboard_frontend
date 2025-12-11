@@ -189,17 +189,20 @@ const TBoardApp = () => {
           break;
 
         case 'lobby_joined':
-          // Если мы — создатель лобби, просто обновляем список игроков
-          if (currentLobby && currentLobby.id === data.lobby_id && currentLobby.isOwner) {
-            setCurrentLobby(prev => ({
-              ...prev,
-              players: [
-                { id: prev.creatorId, ready: false },
-                { id: data.joiner_id, ready: false }  // ← новый игрок
-              ]
-            }));
-          } 
-          // Если мы — новый игрок, создаём новое состояние
+          // Если это создатель — обновляем существующее лобби
+          if (user?.id === data.creator_id) {
+            setCurrentLobby(prev => {
+              if (!prev || prev.id !== data.lobby_id) return prev;
+              return {
+                ...prev,
+                players: [
+                  { id: prev.creatorId, ready: false },
+                  { id: data.joiner_id, ready: false }
+                ]
+              };
+            });
+          }
+          // Если это новый игрок — создаём новое состояние
           else {
             setCurrentLobby({
               id: data.lobby_id,
