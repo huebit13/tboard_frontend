@@ -189,6 +189,24 @@ const TBoardApp = () => {
           setShowCreateLobbyBetSelect(false);
           setCreateLobbyPassword('');
           break;
+        
+        case 'lobby_closed':
+          if (currentLobby && currentLobby.id === data.lobby_id) {
+            alert("Lobby was closed by the creator.");
+            setCurrentLobby(null);
+            // Обновляем список лобби
+            sendMessage({ action: 'get_lobby_list' });
+          }
+          break;
+
+        case 'lobby_player_left':
+          if (currentLobby && currentLobby.id === data.lobby_id) {
+            setCurrentLobby(prev => ({
+              ...prev,
+              players: prev.players.filter(p => p.id !== data.user_id)
+            }));
+          }
+          break;
 
         case 'lobby_joined':
           // Если это создатель — обновляем существующее лобби
@@ -268,7 +286,7 @@ const TBoardApp = () => {
     });
 
     return unsubscribe;
-  }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby]);
+  }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby, sendMessage]);
 
   useEffect(() => {
     currentLobbyRef.current = currentLobby;
@@ -598,6 +616,28 @@ const TBoardApp = () => {
             Create Game
           </span>
         </button>
+        
+        <div className="relative mb-6">
+          <button
+            onClick={(e) => {
+              sendMessage({ action: 'get_lobby_list' });
+              // Анимация вращения иконки
+              const icon = e.currentTarget.querySelector('svg');
+              icon.classList.add('animate-spin');
+              setTimeout(() => icon.classList.remove('animate-spin'), 600);
+            }}
+            disabled={connectionStatus !== 'connected'}
+            className="w-full group relative px-6 py-3 rounded-xl font-semibold overflow-hidden bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 border-2 border-slate-600 hover:border-cyan-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/10 to-cyan-500/0 group-hover:via-cyan-500/20 transition-all"></div>
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 text-cyan-400 transition-transform" />
+              <span className="text-gray-300 group-hover:text-white transition-colors">
+                Refresh Lobbies
+              </span>
+            </span>
+          </button>
+        </div>
 
         {/* Список лобби */}
         <LobbyList
