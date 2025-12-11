@@ -65,6 +65,7 @@ const TBoardApp = () => {
   const [showCreateLobbyGameSelect, setShowCreateLobbyGameSelect] = useState(false);
   const [showCreateLobbyBetSelect, setShowCreateLobbyBetSelect] = useState(false);
   const [createLobbyPassword, setCreateLobbyPassword] = useState('');
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
 
   const [userProfile] = useState({ name: 'CryptoPlayer', avatar: '👤' });
   const [referralStats] = useState({
@@ -296,7 +297,7 @@ const TBoardApp = () => {
     setShowPasswordPrompt(true);
   };
 
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  
   const handlePasswordConfirm = () => {
     setIsCreatingLobby(true);
     sendMessage({
