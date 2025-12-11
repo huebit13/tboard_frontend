@@ -85,6 +85,8 @@ const TBoardApp = () => {
       { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
     ]
   });
+  
+  const currentLobbyRef = useRef(null);
 
   const wallet = useTonWallet();
   const {
@@ -268,6 +270,9 @@ const TBoardApp = () => {
     return unsubscribe;
   }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby]);
 
+  useEffect(() => {
+    currentLobbyRef.current = currentLobby;
+  }, [currentLobby]);
 
   useEffect(() => {
     return () => {
@@ -279,10 +284,9 @@ const TBoardApp = () => {
   // Автоматически покидать лобби при закрытии вкладки или размонтировании
   useEffect(() => {
     const handleBeforeUnload = (event) => {
-      if (currentLobby) {
-        sendMessage({ action: 'leave_lobby', lobby_id: currentLobby.id });
+      if (currentLobbyRef.current) {
+        sendMessage({ action: 'leave_lobby', lobby_id: currentLobbyRef.current.id });
       }
-      // event.preventDefault(); // не работает в большинстве браузеров для TMA
       return null;
     };
 
@@ -290,12 +294,12 @@ const TBoardApp = () => {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Также отправляем при размонтировании компонента (например, при выходе из игры)
-      if (currentLobby) {
-        sendMessage({ action: 'leave_lobby', lobby_id: currentLobby.id });
+      // При размонтировании всего приложения - выходим из лобби
+      if (currentLobbyRef.current) {
+        sendMessage({ action: 'leave_lobby', lobby_id: currentLobbyRef.current.id });
       }
     };
-  }, [currentLobby, sendMessage]);
+  }, []);
   
   if (loading) {
     return (
