@@ -189,18 +189,30 @@ const TBoardApp = () => {
           break;
 
         case 'lobby_joined':
-          setCurrentLobby({
-            id: data.lobby_id,
-            gameType: data.game_type,
-            bet: data.stake,
-            hasPassword: data.has_password,
-            creatorId: data.creator_id,
-            players: [
-              { id: data.creator_id, ready: false },
-              { id: user?.id, ready: false }
-            ],
-            isOwner: false
-          });
+          if (currentLobby && currentLobby.id === data.lobby_id) {
+            // Обновляем существующее лобби (для создателя)
+            setCurrentLobby(prev => ({
+              ...prev,
+              players: [
+                { id: prev.creatorId, ready: false },
+                { id: data.joiner_id, ready: false }
+              ]
+            }));
+          } else {
+            // Новый пользователь присоединяется (для участника)
+            setCurrentLobby({
+              id: data.lobby_id,
+              gameType: data.game_type,
+              bet: data.stake,
+              hasPassword: data.has_password,
+              creatorId: data.creator_id,
+              players: [
+                { id: data.creator_id, ready: false },
+                { id: user?.id, ready: false }
+              ],
+              isOwner: false
+            });
+          }
           break;
 
         case 'lobby_updated':
@@ -213,6 +225,15 @@ const TBoardApp = () => {
         case 'kicked_from_lobby':
           alert("You were kicked from the lobby.");
           setCurrentLobby(null);
+          break;
+        
+        case 'lobby_left':
+          if (data.success) {
+            console.log('✅ Left lobby successfully');
+            setCurrentLobby(null);
+          } else {
+            console.log('ℹ️ Failed to leave lobby:', data.message);
+          }
           break;
         
         case 'queue_left':
