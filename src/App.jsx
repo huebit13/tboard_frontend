@@ -236,6 +236,13 @@ const TBoardApp = () => {
   }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby]);
 
 
+  useEffect(() => {
+    return () => {
+      if (showMatchmaking && connectionStatus === 'connected') {
+        sendMessage({ action: 'leave_queue' });
+      }
+    };
+  }, [showMatchmaking, connectionStatus, sendMessage]);
   // Автоматически покидать лобби при закрытии вкладки или размонтировании
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -292,6 +299,15 @@ const TBoardApp = () => {
       setShowBetSelect(false);
       setShowMatchmaking(true);
     }
+  };
+
+  const handleLeaveQueue = () => {
+    if (connectionStatus === 'connected') {
+      sendMessage({ action: 'leave_queue' });
+    }
+    setShowMatchmaking(false);
+    setSelectedGame(null);
+    setSelectedBet(null);
   };
 
   const handleGameSelect = (game) => {
@@ -680,11 +696,7 @@ const TBoardApp = () => {
             <p className="text-gray-400">Finding a worthy challenger</p>
           </div>
           <button
-            onClick={() => {
-              setShowMatchmaking(false);
-              setSelectedGame(null);
-              setSelectedBet(null);
-            }}
+            onClick={handleLeaveQueue} // ← был setShowMatchmaking(false) и т.д.
             className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold transition-all"
           >
             Cancel
