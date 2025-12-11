@@ -1,5 +1,5 @@
 // src/components/LobbyRoom.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, Lock, Unlock, Check, X, UserMinus, Play, Gamepad2, Coins } from 'lucide-react';
 import { GAMES } from '../../constants/games';
 
@@ -17,6 +17,7 @@ const LobbyRoom = ({
   const amIReady = lobby.players.find(p => p.id === currentUserId)?.ready || false;
   const opponent = lobby.players.find(p => p.id !== currentUserId);
   const bothReady = lobby.players.every(p => p.ready);
+  const isMountedRef = useRef(true); // 🔑 Добавляем ref для отслеживания
 
   const game = GAMES.find(g => g.id === lobby.gameType);
 
@@ -27,11 +28,17 @@ const LobbyRoom = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ✅ ИСПРАВЛЕННЫЙ useEffect - отправляем leave_lobby только при размонтировании
   useEffect(() => {
+    isMountedRef.current = true;
+    
     return () => {
-      sendMessage({ action: 'leave_lobby', lobby_id: lobby.id });
+      // Отправляем leave_lobby только если компонент действительно размонтируется
+      if (isMountedRef.current) {
+        sendMessage({ action: 'leave_lobby', lobby_id: lobby.id });
+      }
     };
-  }, [lobby.id, sendMessage]);
+  }, []); // ⚠️ Убираем зависимости! Только при первом монтировании и размонтировании
 
   return (
     <div className="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
