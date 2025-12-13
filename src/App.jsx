@@ -716,6 +716,24 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
+      {/* CREATE LOBBY */}
+      {showCreateLobbyGameSelect && (
+        <ModalWrapper
+          title="Choose Game for Lobby"
+          onClose={() => setShowCreateLobbyGameSelect(false)}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            {GAMES.map((game) => (
+              <GameButton
+                key={game.id}
+                game={game}
+                onClick={() => handleCreateLobbyGameSelect(game)}
+              />
+            ))}
+          </div>
+        </ModalWrapper>
+      )}
+
       {/* Create Game: выбор валюты и ставки */}
       {showCreateLobbyBetSelect && selectedGame && (
         <ModalWrapper title="" onClose={() => { setShowCreateLobbyBetSelect(false); setSelectedGame(null); }}>
