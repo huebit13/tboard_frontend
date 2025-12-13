@@ -1,5 +1,5 @@
 // src/components/ProfileModal.jsx
-import { ArrowLeft, Wallet, Gamepad2, Trophy, Coins, Clock, Copy, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Wallet, Gamepad2, Trophy, Coins, Clock, Copy, TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 
 const ProfileModal = ({
@@ -9,7 +9,9 @@ const ProfileModal = ({
   address,
   formattedAddress,
   balance,
+  coinBalance = 0,
   balanceLoading,
+  coinLoading = false,
   userStats,
   onCopyAddress,
   onDisconnectWallet,
@@ -55,9 +57,24 @@ const ProfileModal = ({
                 </button>
               </div>
             ) : null}
-            <div className="flex items-center justify-center gap-2">
-              <Coins className="w-5 h-5 text-yellow-400" />
-              <span className="text-xl font-bold">{balanceLoading ? '...' : balance.toFixed(2)} TON</span>
+            
+            {/* Балансы */}
+            <div className="flex items-center justify-center gap-4">
+              {/* TON Balance */}
+              <div className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg">
+                <Coins className="w-5 h-5 text-yellow-400" />
+                <span className="text-lg font-bold">
+                  {balanceLoading ? '...' : balance.toFixed(2)} TON
+                </span>
+              </div>
+              
+              {/* Coin Balance */}
+              <div className="flex items-center gap-2 bg-gradient-to-r from-purple-900/50 to-fuchsia-900/50 px-4 py-2 rounded-lg border border-purple-500/30">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <span className="text-lg font-bold text-purple-400">
+                  {coinLoading ? '...' : coinBalance.toFixed(0)} Coins
+                </span>
+              </div>
             </div>
           </div>
 

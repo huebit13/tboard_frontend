@@ -1,6 +1,6 @@
 // src/components/LobbyRoom.jsx
 import { useState, useEffect, useRef } from 'react';
-import { Users, Lock, Unlock, Check, X, UserMinus, Play, Gamepad2, Coins } from 'lucide-react';
+import { Users, Lock, Unlock, Check, X, UserMinus, Play, Coins, Sparkles } from 'lucide-react';
 import { GAMES } from '../../constants/games';
 
 const LobbyRoom = ({ 
@@ -17,9 +17,12 @@ const LobbyRoom = ({
   const amIReady = lobby.players.find(p => p.id === currentUserId)?.ready || false;
   const opponent = lobby.players.find(p => p.id !== currentUserId);
   const bothReady = lobby.players.every(p => p.ready);
-  const isMountedRef = useRef(true); // 🔑 Добавляем ref для отслеживания
+  const isMountedRef = useRef(true);
 
   const game = GAMES.find(g => g.id === lobby.gameType);
+  const CurrencyIcon = lobby.currency === 'COINS' ? Sparkles : Coins;
+  const currencyColor = lobby.currency === 'COINS' ? 'text-purple-400' : 'text-yellow-400';
+  const currencyLabel = lobby.currency === 'COINS' ? 'Coins' : 'TON';
 
   const copyInvite = () => {
     const url = `https://t.me/tboard_bot?start=lobby_${lobby.id}`;
@@ -28,17 +31,15 @@ const LobbyRoom = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ✅ ИСПРАВЛЕННЫЙ useEffect - отправляем leave_lobby только при размонтировании
   useEffect(() => {
     isMountedRef.current = true;
     
     return () => {
-      // Отправляем leave_lobby только если компонент действительно размонтируется
       if (isMountedRef.current) {
         sendMessage({ action: 'leave_lobby', lobby_id: lobby.id });
       }
     };
-  }, []); // ⚠️ Убираем зависимости! Только при первом монтировании и размонтировании
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
@@ -56,8 +57,8 @@ const LobbyRoom = ({
               {game?.name || lobby.gameType}
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              <Coins className="w-4 h-4 text-yellow-400" />
-              <span className="text-sm text-yellow-400">{lobby.bet} TON</span>
+              <CurrencyIcon className={`w-4 h-4 ${currencyColor}`} />
+              <span className={`text-sm ${currencyColor}`}>{lobby.bet} {currencyLabel}</span>
               {lobby.hasPassword ? (
                 <Lock className="w-4 h-4 text-yellow-500" />
               ) : (

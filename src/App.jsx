@@ -4,18 +4,18 @@ import {
   Share2, Users, Trophy, Gamepad2, Coins, Search, Clock, RefreshCw,
   ArrowLeft, Gift, Zap, Sparkles, Check, Lock, Unlock
 } from 'lucide-react';
-
 import { useTonWallet } from './hooks/useTonWallet';
 import { useUserInit } from './hooks/useUserInit';
 import { useWalletSync } from './hooks/useWalletSync';
 import { useWebSocket } from './hooks/useWebSocket';
+import { useCoinBalance } from './hooks/useCoinBalance';
 import { GAMES } from '../constants/games';
-
 import WelcomeScreen from './components/WelcomeScreen';
 import ModalWrapper from './components/ModalWrapper';
 import GameButton from './components/GameButton';
 import BetButton from './components/BetButton';
-
+import CurrencySelector from './components/CurrencySelector';
+import DailyBonusModal from './components/DailyBonusModal';
 import RockPaperScissors from './games/RockPaperScissors';
 import Checkers from './games/Checkers';
 import Chess from './games/Chess';
@@ -26,14 +26,24 @@ import LobbyList from './components/LobbyList';
 import LobbyRoom from './components/LobbyRoom';
 import PasswordModal from './components/PasswordModal';
 
-const BET_AMOUNTS = [
-  { value: 0.05, label: '0.05 TON' },
-  { value: 0.1, label: '0.1 TON' },
-  { value: 0.5, label: '0.5 TON' },
-  { value: 1, label: '1 TON' },
-  { value: 5, label: '5 TON' },
-  { value: 10, label: '10 TON' }
-];
+const BET_AMOUNTS = {
+  TON: [
+    { value: 0.05, label: '0.05 TON' },
+    { value: 0.1, label: '0.1 TON' },
+    { value: 0.5, label: '0.5 TON' },
+    { value: 1, label: '1 TON' },
+    { value: 5, label: '5 TON' },
+    { value: 10, label: '10 TON' }
+  ],
+  COINS: [
+    { value: 10, label: '10 Coins' },
+    { value: 50, label: '50 Coins' },
+    { value: 100, label: '100 Coins' },
+    { value: 250, label: '250 Coins' },
+    { value: 500, label: '500 Coins' },
+    { value: 1000, label: '1000 Coins' }
+  ]
+};
 
 const GameComponents = {
   rps: RockPaperScissors,
@@ -52,9 +62,11 @@ const TBoardApp = () => {
   const [showBetSelect, setShowBetSelect] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [selectedBet, setSelectedBet] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState('COINS');
   const [showMatchmaking, setShowMatchmaking] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showDailyBonus, setShowDailyBonus] = useState(false);
 
   // === Состояния для лобби ===
   const [lobbies, setLobbies] = useState([]);
@@ -85,7 +97,7 @@ const TBoardApp = () => {
       { id: 5, game: 'dice', bet: 10, result: 'loss', amount: -10, date: '2 days ago' }
     ]
   });
-  
+
   const currentLobbyRef = useRef(null);
 
   const wallet = useTonWallet();
@@ -99,8 +111,10 @@ const TBoardApp = () => {
     disconnect,
     refreshBalance
   } = wallet;
+
   const { token, user, loading } = useUserInit();
   const { connectionStatus, sendMessage, addMessageHandler } = useWebSocket(token);
+  const { coinBalance, refreshCoinBalance, loading: coinLoading } = useCoinBalance(token);
 
   useEffect(() => {
     if (tg) tg.ready();
@@ -140,45 +154,46 @@ const TBoardApp = () => {
   useEffect(() => {
     const unsubscribe = addMessageHandler((data) => {
       console.log("App received WebSocket message:", data);
-
       switch (data.type) {
         case 'connected':
           console.log('✅ Connected to game server');
-          // Запрашиваем список лобби при подключении
           sendMessage({ action: 'get_lobby_list' });
           break;
-
         case 'game_found':
           console.log('🎮 Game found:', data);
           setGameFoundData(data);
           setShowMatchmaking(false);
           setActiveGame({ 
             gameType: selectedGame?.id || data.game_type, 
-            bet: selectedBet?.value || data.stake, 
+            bet: selectedBet?.value || data.stake,
+            currency: data.currency || selectedCurrency,
             id: data.game_id 
           });
           break;
-
         case 'game_result':
           setActiveGame(null);
           setCurrentLobby(null);
           console.log('🏆 Game result:', data);
           setGameResult({ 
             winnerId: data.winner_id, 
-            finalState: data.final_state 
+            finalState: data.final_state,
+            currency: data.currency
           });
-          refreshBalance();
+          if (data.currency === 'TON') {
+            refreshBalance();
+          } else {
+            refreshCoinBalance();
+          }
           break;
-
         case 'lobby_list':
           setLobbies(data.lobbies || []);
           break;
-
         case 'lobby_created':
           setCurrentLobby({
             id: data.lobby_id,
             gameType: data.game_type,
             bet: data.stake,
+            currency: data.currency,
             hasPassword: data.has_password,
             creatorId: user?.id,
             players: [{ id: user?.id, ready: false }],
@@ -189,16 +204,13 @@ const TBoardApp = () => {
           setShowCreateLobbyBetSelect(false);
           setCreateLobbyPassword('');
           break;
-        
         case 'lobby_closed':
           if (currentLobby && currentLobby.id === data.lobby_id) {
             alert("Lobby was closed by the creator.");
             setCurrentLobby(null);
-            // Обновляем список лобби
             sendMessage({ action: 'get_lobby_list' });
           }
           break;
-
         case 'lobby_player_left':
           if (currentLobby && currentLobby.id === data.lobby_id) {
             setCurrentLobby(prev => ({
@@ -207,9 +219,7 @@ const TBoardApp = () => {
             }));
           }
           break;
-
         case 'lobby_joined':
-          // Если это создатель — обновляем существующее лобби
           if (user?.id === data.creator_id) {
             setCurrentLobby(prev => {
               if (!prev || prev.id !== data.lobby_id) return prev;
@@ -221,13 +231,12 @@ const TBoardApp = () => {
                 ]
               };
             });
-          }
-          // Если это новый игрок — создаём новое состояние
-          else {
+          } else {
             setCurrentLobby({
               id: data.lobby_id,
               gameType: data.game_type,
               bet: data.stake,
+              currency: data.currency,
               hasPassword: data.has_password,
               creatorId: data.creator_id,
               players: [
@@ -238,55 +247,38 @@ const TBoardApp = () => {
             });
           }
           break;
-
         case 'lobby_updated':
           if (currentLobby && currentLobby.id === data.lobby_id) {
             const players = (data.players || []).filter(p => p);
             setCurrentLobby(prev => ({ ...prev, players }));
           }
           break;
-
         case 'kicked_from_lobby':
           alert("You were kicked from the lobby.");
           setCurrentLobby(null);
           break;
-        
         case 'lobby_left':
           if (data.success) {
             console.log('✅ Left lobby successfully');
             setCurrentLobby(null);
-          } else {
-            console.log('ℹ️ Failed to leave lobby:', data.message);
           }
           break;
-        
         case 'queue_left':
           if (data.success) {
             console.log('✅ Left queue successfully');
-          } else {
-            console.log('ℹ️ Already not in queue');
           }
           break;
-
         case 'error':
           console.error('❌ WebSocket Error:', data.message);
           alert(`Error: ${data.message}`);
           setShowMatchmaking(false);
           break;
-
-        case 'round_result':
-          break;
-
-        case 'queue_joined':
-          break;
-
         default:
           console.log("Unknown WebSocket message type:", data.type);
       }
     });
-
     return unsubscribe;
-  }, [addMessageHandler, refreshBalance, selectedGame, selectedBet, user?.id, currentLobby, sendMessage]);
+  }, [addMessageHandler, refreshBalance, refreshCoinBalance, selectedGame, selectedBet, selectedCurrency, user?.id, currentLobby, sendMessage]);
 
   useEffect(() => {
     currentLobbyRef.current = currentLobby;
@@ -299,7 +291,7 @@ const TBoardApp = () => {
       }
     };
   }, [showMatchmaking, connectionStatus, sendMessage]);
-  // Автоматически покидать лобби при закрытии вкладки или размонтировании
+
   useEffect(() => {
     const handleBeforeUnload = (event) => {
       if (currentLobbyRef.current) {
@@ -307,18 +299,15 @@ const TBoardApp = () => {
       }
       return null;
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // При размонтировании всего приложения - выходим из лобби
       if (currentLobbyRef.current) {
         sendMessage({ action: 'leave_lobby', lobby_id: currentLobbyRef.current.id });
       }
     };
   }, []);
-  
+
   if (loading) {
     return (
       <div className="bg-slate-950 text-white min-h-screen flex items-center justify-center">
@@ -330,7 +319,7 @@ const TBoardApp = () => {
     );
   }
 
-  // === Обработчики Quick Play (старая очередь) ===
+  // === Обработчики Quick Play ===
   const handleJoinQueue = () => {
     if (connectionStatus !== 'connected') {
       alert("WebSocket is not connected.");
@@ -340,14 +329,16 @@ const TBoardApp = () => {
       alert("Select game and bet.");
       return;
     }
-    if (balance < selectedBet.value) {
-      alert("Insufficient balance.");
+    const currentBalance = selectedCurrency === 'TON' ? balance : coinBalance;
+    if (currentBalance < selectedBet.value) {
+      alert(`Insufficient ${selectedCurrency} balance.`);
       return;
     }
     const success = sendMessage({ 
       action: 'join_queue', 
       game_type: selectedGame.id, 
-      stake: selectedBet.value 
+      stake: selectedBet.value,
+      currency: selectedCurrency
     });
     if (success) {
       setShowGameSelect(false);
@@ -371,6 +362,10 @@ const TBoardApp = () => {
     setShowBetSelect(true);
   };
 
+  const handleCurrencySelect = (currency) => {
+    setSelectedCurrency(currency);
+  };
+
   const handleBetSelect = (bet) => {
     setSelectedBet(bet);
     setShowBetSelect(false);
@@ -390,13 +385,18 @@ const TBoardApp = () => {
     setShowPasswordPrompt(true);
   };
 
-  
   const handlePasswordConfirm = () => {
+    const currentBalance = selectedCurrency === 'TON' ? balance : coinBalance;
+    if (currentBalance < selectedBet.value) {
+      alert(`Insufficient ${selectedCurrency} balance.`);
+      return;
+    }
     setIsCreatingLobby(true);
     sendMessage({
       action: 'create_lobby',
       game_type: selectedGame.id,
       stake: selectedBet.value,
+      currency: selectedCurrency,
       password: createLobbyPassword || undefined
     });
     setShowPasswordPrompt(false);
@@ -501,6 +501,7 @@ const TBoardApp = () => {
     if (GameComponent) {
       return <GameComponent
         bet={activeGame.bet}
+        currency={activeGame.currency}
         gameId={activeGame.id}
         currentUserId={user?.id}
         opponentId={gameFoundData?.opponent_id}
@@ -554,19 +555,35 @@ const TBoardApp = () => {
               <span className="text-sm font-semibold">Share</span>
             </button>
           </div>
-          <div
-            className="flex items-center gap-2 bg-slate-800 px-4 py-2 rounded-lg group cursor-pointer"
-            onClick={refreshBalance}
-          >
-            <Coins className="w-5 h-5 text-yellow-400" />
-            <span className="font-bold text-lg">
-              {balanceLoading ? '...' : balance.toFixed(2)}
-            </span>
-            <span className="text-gray-400 text-sm">TON</span>
-            <RefreshCw className="w-4 h-4 text-gray-400 group-hover:text-cyan-400 group-hover:rotate-180 transition-all" />
+          {/* Балансы */}
+          <div className="flex items-center gap-2">
+            {/* TON Balance */}
+            <div
+              className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-lg group cursor-pointer"
+              onClick={refreshBalance}
+            >
+              <Coins className="w-4 h-4 text-yellow-400" />
+              <span className="font-bold text-sm">
+                {balanceLoading ? '...' : balance.toFixed(2)}
+              </span>
+              <span className="text-gray-400 text-xs">TON</span>
+              <RefreshCw className="w-3 h-3 text-gray-400 group-hover:text-cyan-400 group-hover:rotate-180 transition-all" />
+            </div>
+            {/* Coins Balance */}
+            <div
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-900/50 to-fuchsia-900/50 px-3 py-2 rounded-lg group cursor-pointer border border-purple-500/30"
+              onClick={refreshCoinBalance}
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="font-bold text-sm">
+                {coinLoading ? '...' : coinBalance.toFixed(0)}
+              </span>
+              <span className="text-gray-400 text-xs">Coins</span>
+              <RefreshCw className="w-3 h-3 text-gray-400 group-hover:text-purple-400 group-hover:rotate-180 transition-all" />
+            </div>
           </div>
         </div>
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-2 flex items-center justify-between">
           <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
             connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
             connectionStatus === 'connecting' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -581,6 +598,14 @@ const TBoardApp = () => {
              connectionStatus === 'connecting' ? 'Connecting...' :
              'Disconnected'}
           </div>
+          {/* Daily Bonus Button */}
+          <button
+            onClick={() => setShowDailyBonus(true)}
+            className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-full text-xs font-semibold text-yellow-400 hover:scale-105 transition-transform"
+          >
+            <Gift className="w-4 h-4" />
+            Daily Bonus
+          </button>
         </div>
       </header>
 
@@ -616,12 +641,11 @@ const TBoardApp = () => {
             Create Game
           </span>
         </button>
-        
+
         <div className="relative mb-6">
           <button
             onClick={(e) => {
               sendMessage({ action: 'get_lobby_list' });
-              // Анимация вращения иконки
               const icon = e.currentTarget.querySelector('svg');
               icon.classList.add('animate-spin');
               setTimeout(() => icon.classList.remove('animate-spin'), 600);
@@ -660,7 +684,7 @@ const TBoardApp = () => {
         </ModalWrapper>
       )}
 
-      {/* Quick Play: выбор ставки */}
+      {/* Quick Play: выбор валюты и ставки */}
       {showBetSelect && selectedGame && (
         <ModalWrapper title="" onClose={() => { setShowBetSelect(false); setSelectedGame(null); }}>
           <div className="text-center mb-6">
@@ -668,37 +692,31 @@ const TBoardApp = () => {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
               {selectedGame.name}
             </h2>
-            <p className="text-gray-400 mt-2">Select your bet amount</p>
-            <div className="mt-3 bg-slate-800 rounded-lg px-4 py-2 inline-flex items-center gap-2">
-              <span className="text-sm text-gray-400">Your balance:</span>
-              <span className="font-bold text-yellow-400">{balance.toFixed(2)} TON</span>
-            </div>
+            <p className="text-gray-400 mt-2">Select currency and bet amount</p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {BET_AMOUNTS.map((bet) => (
-              <BetButton
-                key={bet.value}
-                bet={bet}
-                canAfford={balance >= bet.value}
-                onClick={() => handleBetSelect(bet)}
-              />
-            ))}
-          </div>
-        </ModalWrapper>
-      )}
-
-      {/* Create Game: выбор игры */}
-      {showCreateLobbyGameSelect && (
-        <ModalWrapper title="Choose Game" onClose={() => setShowCreateLobbyGameSelect(false)}>
-          <div className="grid grid-cols-2 gap-4">
-            {GAMES.map((game) => (
-              <GameButton key={game.id} game={game} onClick={() => handleCreateLobbyGameSelect(game)} />
-            ))}
+          <CurrencySelector
+            selected={selectedCurrency}
+            onSelect={handleCurrencySelect}
+            tonBalance={balance}
+            coinBalance={coinBalance}
+          />
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            {BET_AMOUNTS[selectedCurrency].map((bet) => {
+              const currentBalance = selectedCurrency === 'TON' ? balance : coinBalance;
+              return (
+                <BetButton
+                  key={bet.value}
+                  bet={bet}
+                  canAfford={currentBalance >= bet.value}
+                  onClick={() => handleBetSelect(bet)}
+                />
+              );
+            })}
           </div>
         </ModalWrapper>
       )}
 
-      {/* Create Game: выбор ставки */}
+      {/* Create Game: выбор валюты и ставки */}
       {showCreateLobbyBetSelect && selectedGame && (
         <ModalWrapper title="" onClose={() => { setShowCreateLobbyBetSelect(false); setSelectedGame(null); }}>
           <div className="text-center mb-6">
@@ -706,21 +724,26 @@ const TBoardApp = () => {
             <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
               {selectedGame.name}
             </h2>
-            <p className="text-gray-400 mt-2">Select your bet amount</p>
-            <div className="mt-3 bg-slate-800 rounded-lg px-4 py-2 inline-flex items-center gap-2">
-              <span className="text-sm text-gray-400">Your balance:</span>
-              <span className="font-bold text-yellow-400">{balance.toFixed(2)} TON</span>
-            </div>
+            <p className="text-gray-400 mt-2">Select currency and bet amount</p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {BET_AMOUNTS.map((bet) => (
-              <BetButton
-                key={bet.value}
-                bet={bet}
-                canAfford={balance >= bet.value}
-                onClick={() => handleCreateLobbyBetSelect(bet)}
-              />
-            ))}
+          <CurrencySelector
+            selected={selectedCurrency}
+            onSelect={handleCurrencySelect}
+            tonBalance={balance}
+            coinBalance={coinBalance}
+          />
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            {BET_AMOUNTS[selectedCurrency].map((bet) => {
+              const currentBalance = selectedCurrency === 'TON' ? balance : coinBalance;
+              return (
+                <BetButton
+                  key={bet.value}
+                  bet={bet}
+                  canAfford={currentBalance >= bet.value}
+                  onClick={() => handleCreateLobbyBetSelect(bet)}
+                />
+              );
+            })}
           </div>
         </ModalWrapper>
       )}
@@ -761,8 +784,17 @@ const TBoardApp = () => {
             <div className="text-6xl mb-4 animate-pulse">{selectedGame.icon}</div>
             <h2 className="text-2xl font-bold mb-2">{selectedGame.name}</h2>
             <div className="inline-flex items-center gap-2 bg-yellow-500/20 px-4 py-2 rounded-full">
-              <Coins className="w-5 h-5 text-yellow-400" />
-              <span className="text-xl font-bold text-yellow-400">{selectedBet.value} TON</span>
+              {selectedCurrency === 'TON' ? (
+                <>
+                  <Coins className="w-5 h-5 text-yellow-400" />
+                  <span className="text-xl font-bold text-yellow-400">{selectedBet.value} TON</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  <span className="text-xl font-bold text-purple-400">{selectedBet.value} Coins</span>
+                </>
+              )}
             </div>
           </div>
           <div className="mb-6">
@@ -773,7 +805,7 @@ const TBoardApp = () => {
             <p className="text-gray-400">Finding a worthy challenger</p>
           </div>
           <button
-            onClick={handleLeaveQueue} // ← был setShowMatchmaking(false) и т.д.
+            onClick={handleLeaveQueue}
             className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold transition-all"
           >
             Cancel
@@ -786,6 +818,7 @@ const TBoardApp = () => {
         <GameResultModal
           winnerId={gameResult.winnerId}
           finalState={gameResult.finalState}
+          currency={gameResult.currency}
           currentUserId={user?.id}
           onClose={handleCloseResult}
         />
@@ -797,6 +830,14 @@ const TBoardApp = () => {
         onClose={() => setShowPasswordModal(false)}
         onSubmit={handlePasswordSubmit}
         lobbyName={passwordModalLobby?.creator_name || 'Private Lobby'}
+      />
+
+      {/* Daily Bonus */}
+      <DailyBonusModal
+        isOpen={showDailyBonus}
+        onClose={() => setShowDailyBonus(false)}
+        token={token}
+        onClaimed={refreshCoinBalance}
       />
 
       <ShareModal
@@ -813,7 +854,9 @@ const TBoardApp = () => {
         address={address}
         formattedAddress={formattedAddress}
         balance={balance}
+        coinBalance={coinBalance}
         balanceLoading={balanceLoading}
+        coinLoading={coinLoading}
         userStats={userStats}
         onCopyAddress={handleCopyAddress}
         onDisconnectWallet={handleDisconnectWallet}
